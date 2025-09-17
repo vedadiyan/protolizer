@@ -1,6 +1,7 @@
 package protolizer
 
 import (
+	"encoding/hex"
 	"reflect"
 	"testing"
 )
@@ -17,7 +18,94 @@ type User struct {
 	Password         string  `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
 }
 
-func TestRegisterType(t *testing.T) {
+func TestSerializeStruct_User(t *testing.T) {
+	// prepare values
+	id := int64(123)
+	emergency := "911"
+	profile := "avatar.png"
+
+	u := &User{
+		Id:               &id,
+		FirstName:        "John",
+		LastName:         "Doe",
+		Email:            "john.doe@example.com",
+		Phone:            "555-1234",
+		EmergencyContact: &emergency,
+		DateOfBirth:      "2000-01-01",
+		ProfilePicture:   &profile,
+		Password:         "secret",
+	}
+
+	// register type explicitly
 	RegisterType(reflect.TypeOf(new(User)))
+
+	// serialize
+	b, err := SerializeStruct(u)
+	if err != nil {
+		t.Fatalf("SerializeStruct failed: %v", err)
+	}
+
+	if len(b) == 0 {
+		t.Fatal("expected non-empty serialization")
+	}
+
+	// log encoded bytes for inspection
+	t.Logf("Encoded User protobuf: %s", hex.EncodeToString(b))
+}
+
+func TestSerializeDeserialize_User(t *testing.T) {
+	// prepare values
+	id := int64(123)
+	emergency := "911"
+	profile := "avatar.png"
+
+	u := &User{
+		Id:               &id,
+		FirstName:        "John",
+		LastName:         "Doe",
+		Email:            "john.doe@example.com",
+		Phone:            "555-1234",
+		EmergencyContact: &emergency,
+		DateOfBirth:      "2000-01-01",
+		ProfilePicture:   &profile,
+		Password:         "secret",
+	}
+
+	// register type explicitly
 	RegisterType(reflect.TypeOf(new(User)))
+
+	// serialize
+	b, err := SerializeStruct(u)
+	if err != nil {
+		t.Fatalf("SerializeStruct failed: %v", err)
+	}
+	if len(b) == 0 {
+		t.Fatal("expected non-empty serialization")
+	}
+	t.Logf("Encoded User protobuf: %s", hex.EncodeToString(b))
+
+	// deserialize into a new User
+	var u2 User
+	if err := DeserializeStruct(b, &u2); err != nil {
+		t.Fatalf("DeserializeStruct failed: %v", err)
+	}
+
+	// compare round trip
+	if u2.FirstName != u.FirstName ||
+		u2.LastName != u.LastName ||
+		u2.Email != u.Email ||
+		u2.Phone != u.Phone ||
+		u2.DateOfBirth != u.DateOfBirth ||
+		u2.Password != u.Password {
+		t.Errorf("mismatch after round trip: got %+v, want %+v", u2, u)
+	}
+	if u2.Id == nil || *u2.Id != *u.Id {
+		t.Errorf("Id mismatch: got %v, want %v", u2.Id, u.Id)
+	}
+	if u2.EmergencyContact == nil || *u2.EmergencyContact != *u.EmergencyContact {
+		t.Errorf("EmergencyContact mismatch: got %v, want %v", u2.EmergencyContact, u.EmergencyContact)
+	}
+	if u2.ProfilePicture == nil || *u2.ProfilePicture != *u.ProfilePicture {
+		t.Errorf("ProfilePicture mismatch: got %v, want %v", u2.ProfilePicture, u.ProfilePicture)
+	}
 }
