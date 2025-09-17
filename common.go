@@ -176,37 +176,6 @@ func wireTypeNum(wt WireType) int {
 	}
 }
 
-func EncodeVarint(u uint64) []byte {
-	var buf []byte
-	for u >= 0x80 {
-		buf = append(buf, byte(u)|0x80)
-		u >>= 7
-	}
-	buf = append(buf, byte(u))
-	return buf
-}
-
-func DecodeVarint(buf []byte, i *int) (uint64, error) {
-	var result uint64
-	var shift uint
-	for {
-		if *i >= len(buf) {
-			return 0, fmt.Errorf("buffer underflow in varint")
-		}
-		b := buf[*i]
-		*i++
-		result |= uint64(b&0x7F) << shift
-		if b < 0x80 {
-			break
-		}
-		shift += 7
-		if shift >= 64 {
-			return 0, fmt.Errorf("varint overflow")
-		}
-	}
-	return result, nil
-}
-
 func WireTypeFromNum(n int) WireType {
 	switch n {
 	case 0:
