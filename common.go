@@ -3,6 +3,7 @@ package protolizer
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -33,8 +34,6 @@ type (
 		Kind      reflect.Kind
 		IsPointer bool
 		Tags      *Tags
-		GetValue  func(v reflect.Value) *Serializable
-		SetValue  func(v reflect.Value, value any)
 	}
 	Type struct {
 		Fields []*Field
@@ -45,9 +44,9 @@ const (
 	WIRETYPE_VARINT           WireType = "varint"
 	WIRETYPE_FIXED_64         WireType = "fixed64"
 	WIRETYPE_LENGTH_DELIMITED WireType = "bytes"
-	WRIETYPE_START_GROUP
-	WIRETYPE_END_GROUP
-	WIRETYPE_FIXED_32 WireType = "fixed32"
+	WIRETYPE_START_GROUP      WireType = "start_group"
+	WIRETYPE_END_GROUP        WireType = "end_group"
+	WIRETYPE_FIXED_32         WireType = "fixed32"
 )
 
 var (
@@ -66,9 +65,16 @@ func RegisterType(t reflect.Type) *Type {
 		return value
 	}
 	out := new(Type)
-	out.Fields = make([]*Field, t.Elem().NumField())
-	for i := range t.Elem().NumField() {
-		f := NewField(t.Elem().Field(i))
+
+	// Handle pointer types
+	elemType := t
+	if t.Kind() == reflect.Ptr {
+		elemType = t.Elem()
+	}
+
+	out.Fields = make([]*Field, elemType.NumField())
+	for i := 0; i < elemType.NumField(); i++ {
+		f := NewField(elemType.Field(i))
 		out.Fields[i] = f
 	}
 	_registry[t] = out
@@ -87,39 +93,32 @@ func NewTags(t reflect.StructTag) *Tags {
 func NewField(f reflect.StructField) *Field {
 	out := new(Field)
 	out.Name = f.Name
-	out.Kind, out.IsPointer = GetKind(f.Type)
+	out.Kind = f.Type.Kind()
+
+	// Check for pointer types
+	if f.Type.Kind() == reflect.Ptr {
+		out.IsPointer = true
+		out.Kind = f.Type.Elem().Kind()
+	}
+
 	out.Tags = NewTags(f.Tag)
-
-	out.GetValue = func(v reflect.Value) *Serializable {
-		fieldVal := v.FieldByIndex(f.Index)
-		if out.IsPointer {
-			if fieldVal.IsNil() {
-				return &Serializable{Value: nil}
-			}
-			return &Serializable{Value: fieldVal.Elem().Interface()}
-		}
-		return &Serializable{Value: fieldVal.Interface()}
-	}
-
-	out.SetValue = func(v reflect.Value, value any) {
-		fieldVal := v.FieldByIndex(f.Index)
-		if out.IsPointer {
-			ptr := reflect.New(fieldVal.Type().Elem())
-			ptr.Elem().Set(reflect.ValueOf(value))
-			fieldVal.Set(ptr)
-		} else {
-			fieldVal.Set(reflect.ValueOf(value))
-		}
-	}
 	return out
 }
 
 func ParseProtoTag(tag string) *ProtobufInfo {
-	tag = strings.TrimPrefix(tag, "protobuf:\"")
-	tag = strings.TrimSuffix(tag, "\"")
+	// Handle different protobuf tag formats
+	tag = strings.Trim(tag, "\"")
+	if strings.HasPrefix(tag, "protobuf:") {
+		tag = strings.TrimPrefix(tag, "protobuf:")
+		tag = strings.Trim(tag, "\"")
+	}
 
 	segments := strings.Split(tag, ",")
 	l := len(segments)
+
+	if l < 2 {
+		return nil
+	}
 
 	fieldNum, err := strconv.Atoi(segments[1])
 	if err != nil {
@@ -142,7 +141,7 @@ func ParseProtoTag(tag string) *ProtobufInfo {
 	if l > 4 {
 		out.Syntax = segments[4]
 	}
-	if len(segments) == 5 {
+	if len(segments) == 6 {
 		out.OneOf = true
 	}
 
@@ -160,109 +159,6 @@ func (t *Tags) IsProtobuf() bool {
 	return t.Protobuf != nil
 }
 
-func (ser *Serializable) Serialize(wireType WireType) ([]byte, error) {
-	switch wireType {
-	case WIRETYPE_VARINT:
-		var u uint64
-		switch v := ser.Value.(type) {
-		case int:
-			u = uint64(v)
-		case int32:
-			u = uint64(v)
-		case int64:
-			u = uint64(v)
-		case uint32:
-			u = uint64(v)
-		case uint64:
-			u = v
-		case bool:
-			if v {
-				u = 1
-			} else {
-				u = 0
-			}
-		default:
-			return nil, fmt.Errorf("varint expects int/bool, got %T", ser.Value)
-		}
-		return encodeVarint(u), nil
-
-	case WIRETYPE_LENGTH_DELIMITED:
-		switch v := ser.Value.(type) {
-		case []byte:
-			lenBuf := encodeVarint(uint64(len(v)))
-			return append(lenBuf, v...), nil
-		case string:
-			data := []byte(v)
-			lenBuf := encodeVarint(uint64(len(data)))
-			return append(lenBuf, data...), nil
-		default:
-			rv := reflect.ValueOf(ser.Value)
-			if rv.Kind() == reflect.Struct || (rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct) {
-				b, err := SerializeStruct(ser.Value)
-				if err != nil {
-					return nil, err
-				}
-				lenBuf := encodeVarint(uint64(len(b)))
-				return append(lenBuf, b...), nil
-			}
-			return nil, fmt.Errorf("length-delimited expects []byte/string/struct, got %T", ser.Value)
-		}
-
-	case WIRETYPE_FIXED_64:
-		v, ok := ser.Value.(uint64)
-		if !ok {
-			return nil, fmt.Errorf("fixed64 expects uint64, got %T", ser.Value)
-		}
-		buf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(buf, v)
-		return buf, nil
-
-	case WIRETYPE_FIXED_32:
-		v, ok := ser.Value.(uint32)
-		if !ok {
-			return nil, fmt.Errorf("fixed32 expects uint32, got %T", ser.Value)
-		}
-		buf := make([]byte, 4)
-		binary.LittleEndian.PutUint32(buf, v)
-		return buf, nil
-
-	default:
-		return nil, fmt.Errorf("unexpected wire type %s", wireType)
-	}
-}
-
-func (ser *Serializable) SerializeRepeated(wireType WireType, packed bool) ([][]byte, error) {
-	values, ok := ser.Value.([]any)
-	if !ok {
-		return nil, fmt.Errorf("repeated expects []any, got %T", ser.Value)
-	}
-
-	if packed {
-		var packedBuf []byte
-		for _, v := range values {
-			elem := &Serializable{Value: v}
-			b, err := elem.Serialize(wireType)
-			if err != nil {
-				return nil, err
-			}
-			packedBuf = append(packedBuf, b...)
-		}
-		lenBuf := encodeVarint(uint64(len(packedBuf)))
-		return [][]byte{append(lenBuf, packedBuf...)}, nil
-	}
-
-	var out [][]byte
-	for _, v := range values {
-		elem := &Serializable{Value: v}
-		b, err := elem.Serialize(wireType)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, b)
-	}
-	return out, nil
-}
-
 func wireTypeNum(wt WireType) int {
 	switch wt {
 	case WIRETYPE_VARINT:
@@ -271,6 +167,10 @@ func wireTypeNum(wt WireType) int {
 		return 1
 	case WIRETYPE_LENGTH_DELIMITED:
 		return 2
+	case WIRETYPE_START_GROUP:
+		return 3
+	case WIRETYPE_END_GROUP:
+		return 4
 	case WIRETYPE_FIXED_32:
 		return 5
 	default:
@@ -286,59 +186,6 @@ func encodeVarint(u uint64) []byte {
 	}
 	buf = append(buf, byte(u))
 	return buf
-}
-
-func SerializeStruct(v any) ([]byte, error) {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-	}
-	if rv.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("SerializeStruct expects struct or *struct, got %T", v)
-	}
-
-	rt := rv.Type()
-	t := RegisterType(reflect.PointerTo(rt))
-	var out []byte
-
-	for _, f := range t.Fields {
-		if f.Tags == nil || !f.Tags.IsProtobuf() {
-			continue
-		}
-		info := f.Tags.Protobuf
-		fieldVal := rv.FieldByName(f.Name)
-		if f.IsPointer && fieldVal.IsNil() {
-			continue
-		}
-		ser := f.GetValue(rv)
-		wireNum := wireTypeNum(info.WireType)
-		if wireNum < 0 {
-			return nil, fmt.Errorf("invalid wire type %s", info.WireType)
-		}
-		tag := uint64(info.FieldNum<<3 | wireNum)
-
-		if strings.HasPrefix(info.Label, "repeated") {
-			packed := (info.WireType == WIRETYPE_VARINT ||
-				info.WireType == WIRETYPE_FIXED_32 ||
-				info.WireType == WIRETYPE_FIXED_64)
-			bufs, err := ser.SerializeRepeated(info.WireType, packed)
-			if err != nil {
-				return nil, err
-			}
-			for _, b := range bufs {
-				out = append(out, encodeVarint(tag)...)
-				out = append(out, b...)
-			}
-		} else {
-			valBytes, err := ser.Serialize(info.WireType)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, encodeVarint(tag)...)
-			out = append(out, valBytes...)
-		}
-	}
-	return out, nil
 }
 
 func decodeVarint(buf []byte, i *int) (uint64, error) {
@@ -370,6 +217,10 @@ func wireTypeFromNum(n int) WireType {
 		return WIRETYPE_FIXED_64
 	case 2:
 		return WIRETYPE_LENGTH_DELIMITED
+	case 3:
+		return WIRETYPE_START_GROUP
+	case 4:
+		return WIRETYPE_END_GROUP
 	case 5:
 		return WIRETYPE_FIXED_32
 	default:
@@ -377,101 +228,601 @@ func wireTypeFromNum(n int) WireType {
 	}
 }
 
-func DeserializeStruct(data []byte, v any) error {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("DeserializeStruct expects pointer to struct, got %T", v)
-	}
-	rv = rv.Elem()
-	rt := rv.Type()
+// Encode a tag (field number + wire type)
+func encodeTag(fieldNum int, wireType WireType) []byte {
+	tag := (fieldNum << 3) | wireTypeNum(wireType)
+	return encodeVarint(uint64(tag))
+}
 
-	t := RegisterType(reflect.PtrTo(rt))
+// Decode a tag (field number + wire type)
+func decodeTag(buf []byte, i *int) (int, WireType, error) {
+	tag, err := decodeVarint(buf, i)
+	if err != nil {
+		return 0, "", err
+	}
+	fieldNum := int(tag >> 3)
+	wireType := wireTypeFromNum(int(tag & 0x7))
+	return fieldNum, wireType, nil
+}
+
+// Encode fixed32 value
+func encodeFixed32(v uint32) []byte {
+	buf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(buf, v)
+	return buf
+}
+
+// Decode fixed32 value
+func decodeFixed32(buf []byte, i *int) (uint32, error) {
+	if *i+4 > len(buf) {
+		return 0, fmt.Errorf("buffer underflow in fixed32")
+	}
+	result := binary.LittleEndian.Uint32(buf[*i:])
+	*i += 4
+	return result, nil
+}
+
+// Encode fixed64 value
+func encodeFixed64(v uint64) []byte {
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(buf, v)
+	return buf
+}
+
+// Decode fixed64 value
+func decodeFixed64(buf []byte, i *int) (uint64, error) {
+	if *i+8 > len(buf) {
+		return 0, fmt.Errorf("buffer underflow in fixed64")
+	}
+	result := binary.LittleEndian.Uint64(buf[*i:])
+	*i += 8
+	return result, nil
+}
+
+// Encode length-delimited value (bytes, string, embedded message)
+func encodeLengthDelimited(data []byte) []byte {
+	result := encodeVarint(uint64(len(data)))
+	result = append(result, data...)
+	return result
+}
+
+// Decode length-delimited value
+func decodeLengthDelimited(buf []byte, i *int) ([]byte, error) {
+	length, err := decodeVarint(buf, i)
+	if err != nil {
+		return nil, err
+	}
+	if *i+int(length) > len(buf) {
+		return nil, fmt.Errorf("buffer underflow in length-delimited")
+	}
+	result := make([]byte, length)
+	copy(result, buf[*i:*i+int(length)])
+	*i += int(length)
+	return result, nil
+}
+
+// Marshal serializes a struct to protobuf binary format
+func Marshal(v interface{}) ([]byte, error) {
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil, fmt.Errorf("cannot marshal nil pointer")
+		}
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("can only marshal struct types")
+	}
+
+	typ := RegisterType(reflect.TypeOf(v))
+	var result []byte
+
+	for i, field := range typ.Fields {
+		if !field.Tags.IsProtobuf() {
+			continue
+		}
+
+		fieldVal := val.Field(i)
+		if field.IsPointer {
+			if fieldVal.IsNil() {
+				continue // Skip nil pointers
+			}
+			fieldVal = fieldVal.Elem()
+		}
+
+		// Skip zero values for optional fields
+		if fieldVal.IsZero() && field.Tags.Protobuf.Label != "required" {
+			continue
+		}
+
+		encoded, err := encodeField(field, fieldVal)
+		if err != nil {
+			return nil, fmt.Errorf("error encoding field %s: %w", field.Name, err)
+		}
+
+		result = append(result, encoded...)
+	}
+
+	return result, nil
+}
+
+func encodeField(field *Field, val reflect.Value) ([]byte, error) {
+	// Handle repeated fields and maps (but not []byte which is handled as length-delimited)
+	if field.Kind == reflect.Map || (field.Kind == reflect.Slice && val.Type().Elem().Kind() != reflect.Uint8) {
+		return encodeRepeatedOrMap(field, val)
+	}
+
+	tag := encodeTag(field.Tags.Protobuf.FieldNum, field.Tags.Protobuf.WireType)
+	var data []byte
+
+	switch field.Tags.Protobuf.WireType {
+	case WIRETYPE_VARINT:
+		var u uint64
+		switch field.Kind {
+		case reflect.Bool:
+			if val.Bool() {
+				u = 1
+			}
+		case reflect.Int32, reflect.Int64, reflect.Int:
+			u = uint64(val.Int())
+		case reflect.Uint32, reflect.Uint64, reflect.Uint:
+			u = val.Uint()
+		default:
+			return nil, fmt.Errorf("unsupported varint type: %v", field.Kind)
+		}
+		data = encodeVarint(u)
+
+	case WIRETYPE_FIXED_32:
+		switch field.Kind {
+		case reflect.Float32:
+			u := math.Float32bits(float32(val.Float()))
+			data = encodeFixed32(u)
+		case reflect.Uint32:
+			data = encodeFixed32(uint32(val.Uint()))
+		case reflect.Int32:
+			data = encodeFixed32(uint32(val.Int()))
+		default:
+			return nil, fmt.Errorf("unsupported fixed32 type: %v", field.Kind)
+		}
+
+	case WIRETYPE_FIXED_64:
+		switch field.Kind {
+		case reflect.Float64:
+			u := math.Float64bits(val.Float())
+			data = encodeFixed64(u)
+		case reflect.Uint64:
+			data = encodeFixed64(val.Uint())
+		case reflect.Int64:
+			data = encodeFixed64(uint64(val.Int()))
+		default:
+			return nil, fmt.Errorf("unsupported fixed64 type: %v", field.Kind)
+		}
+
+	case WIRETYPE_LENGTH_DELIMITED:
+		switch field.Kind {
+		case reflect.String:
+			data = encodeLengthDelimited([]byte(val.String()))
+		case reflect.Slice:
+			if val.Type().Elem().Kind() == reflect.Uint8 {
+				// []byte
+				data = encodeLengthDelimited(val.Bytes())
+			} else {
+				return nil, fmt.Errorf("unsupported slice type for length-delimited: %v", val.Type())
+			}
+		case reflect.Struct:
+			// Embedded message
+			embedded, err := Marshal(val.Interface())
+			if err != nil {
+				return nil, err
+			}
+			data = encodeLengthDelimited(embedded)
+		default:
+			return nil, fmt.Errorf("unsupported length-delimited type: %v", field.Kind)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported wire type: %v", field.Tags.Protobuf.WireType)
+	}
+
+	result := make([]byte, len(tag)+len(data))
+	copy(result, tag)
+	copy(result[len(tag):], data)
+	return result, nil
+}
+
+func encodeRepeatedOrMap(field *Field, val reflect.Value) ([]byte, error) {
+	var result []byte
+
+	if field.Kind == reflect.Map {
+		// Handle maps as repeated key-value pairs
+		for _, key := range val.MapKeys() {
+			mapVal := val.MapIndex(key)
+
+			// Create a map entry message
+			var entryData []byte
+
+			// Key (field 1)
+			keyTag := encodeTag(1, WIRETYPE_LENGTH_DELIMITED)
+			keyData := encodeLengthDelimited([]byte(key.String()))
+			entryData = append(entryData, keyTag...)
+			entryData = append(entryData, keyData...)
+
+			// Value (field 2)
+			valueTag := encodeTag(2, WIRETYPE_LENGTH_DELIMITED)
+			valueData := encodeLengthDelimited([]byte(mapVal.String()))
+			entryData = append(entryData, valueTag...)
+			entryData = append(entryData, valueData...)
+
+			// Wrap the entry in length-delimited encoding
+			tag := encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_LENGTH_DELIMITED)
+			data := encodeLengthDelimited(entryData)
+
+			result = append(result, tag...)
+			result = append(result, data...)
+		}
+		return result, nil
+	}
+
+	// Handle repeated fields (slices)
+	for i := 0; i < val.Len(); i++ {
+		elem := val.Index(i)
+		elemKind := elem.Kind()
+
+		var tag []byte
+		var data []byte
+
+		switch elemKind {
+		case reflect.String:
+			tag = encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_LENGTH_DELIMITED)
+			data = encodeLengthDelimited([]byte(elem.String()))
+
+		case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Int, reflect.Uint32, reflect.Uint64, reflect.Uint:
+			tag = encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_VARINT)
+			var u uint64
+			switch elemKind {
+			case reflect.Bool:
+				if elem.Bool() {
+					u = 1
+				}
+			case reflect.Int32, reflect.Int64, reflect.Int:
+				u = uint64(elem.Int())
+			case reflect.Uint32, reflect.Uint64, reflect.Uint:
+				u = elem.Uint()
+			}
+			data = encodeVarint(u)
+
+		case reflect.Float32:
+			tag = encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_FIXED_32)
+			u := math.Float32bits(float32(elem.Float()))
+			data = encodeFixed32(u)
+
+		case reflect.Float64:
+			tag = encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_FIXED_64)
+			u := math.Float64bits(elem.Float())
+			data = encodeFixed64(u)
+
+		case reflect.Struct:
+			tag = encodeTag(field.Tags.Protobuf.FieldNum, WIRETYPE_LENGTH_DELIMITED)
+			embedded, err := Marshal(elem.Interface())
+			if err != nil {
+				return nil, err
+			}
+			data = encodeLengthDelimited(embedded)
+
+		default:
+			return nil, fmt.Errorf("unsupported repeated element type: %v", elemKind)
+		}
+
+		result = append(result, tag...)
+		result = append(result, data...)
+	}
+
+	return result, nil
+}
+
+// Unmarshal deserializes protobuf binary data into a struct
+func Unmarshal(data []byte, v interface{}) error {
+	val := reflect.ValueOf(v)
+	if val.Kind() != reflect.Ptr || val.IsNil() {
+		return fmt.Errorf("unmarshal target must be a non-nil pointer")
+	}
+
+	val = val.Elem()
+	if val.Kind() != reflect.Struct {
+		return fmt.Errorf("unmarshal target must be a pointer to struct")
+	}
+
+	typ := RegisterType(reflect.TypeOf(v))
+
+	// Create field number to field index map
+	fieldMap := make(map[int]int)
+	for i, field := range typ.Fields {
+		if field.Tags.IsProtobuf() {
+			fieldMap[field.Tags.Protobuf.FieldNum] = i
+		}
+	}
+
+	// Initialize slices and maps for repeated fields
+	for i, field := range typ.Fields {
+		if !field.Tags.IsProtobuf() {
+			continue
+		}
+		fieldVal := val.Field(i)
+		if field.Kind == reflect.Slice && fieldVal.IsNil() {
+			fieldVal.Set(reflect.MakeSlice(fieldVal.Type(), 0, 0))
+		}
+		if field.Kind == reflect.Map && fieldVal.IsNil() {
+			fieldVal.Set(reflect.MakeMap(fieldVal.Type()))
+		}
+	}
+
 	i := 0
 	for i < len(data) {
-		tagVal, err := decodeVarint(data, &i)
+		fieldNum, wireType, err := decodeTag(data, &i)
+		if err != nil {
+			return fmt.Errorf("error decoding tag: %w", err)
+		}
+
+		fieldIndex, exists := fieldMap[fieldNum]
+		if !exists {
+			// Skip unknown field
+			if err := skipField(data, &i, wireType); err != nil {
+				return fmt.Errorf("error skipping unknown field %d: %w", fieldNum, err)
+			}
+			continue
+		}
+
+		field := typ.Fields[fieldIndex]
+		fieldVal := val.Field(fieldIndex)
+
+		if err := decodeField(field, fieldVal, data, &i, wireType); err != nil {
+			return fmt.Errorf("error decoding field %s: %w", field.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func decodeField(field *Field, val reflect.Value, buf []byte, i *int, wireType WireType) error {
+	// Handle repeated fields (slices) and maps (but not []byte which is handled as length-delimited)
+	if field.Kind == reflect.Map || (field.Kind == reflect.Slice && val.Type().Elem().Kind() != reflect.Uint8) {
+		return decodeRepeatedOrMap(field, val, buf, i, wireType)
+	}
+
+	if field.IsPointer {
+		if val.IsNil() {
+			val.Set(reflect.New(val.Type().Elem()))
+		}
+		val = val.Elem()
+	}
+
+	switch wireType {
+	case WIRETYPE_VARINT:
+		u, err := decodeVarint(buf, i)
 		if err != nil {
 			return err
 		}
-		fieldNum := int(tagVal >> 3)
-		wireNum := int(tagVal & 0x7)
+		switch field.Kind {
+		case reflect.Bool:
+			val.SetBool(u != 0)
+		case reflect.Int32, reflect.Int64, reflect.Int:
+			val.SetInt(int64(u))
+		case reflect.Uint32, reflect.Uint64, reflect.Uint:
+			val.SetUint(u)
+		default:
+			return fmt.Errorf("unsupported varint type: %v", field.Kind)
+		}
 
-		var f *Field
-		for _, fld := range t.Fields {
-			if fld.Tags != nil && fld.Tags.IsProtobuf() && fld.Tags.Protobuf.FieldNum == fieldNum {
-				f = fld
-				break
+	case WIRETYPE_FIXED_32:
+		u, err := decodeFixed32(buf, i)
+		if err != nil {
+			return err
+		}
+		switch field.Kind {
+		case reflect.Float32:
+			val.SetFloat(float64(math.Float32frombits(u)))
+		case reflect.Uint32:
+			val.SetUint(uint64(u))
+		case reflect.Int32:
+			val.SetInt(int64(int32(u)))
+		default:
+			return fmt.Errorf("unsupported fixed32 type: %v", field.Kind)
+		}
+
+	case WIRETYPE_FIXED_64:
+		u, err := decodeFixed64(buf, i)
+		if err != nil {
+			return err
+		}
+		switch field.Kind {
+		case reflect.Float64:
+			val.SetFloat(math.Float64frombits(u))
+		case reflect.Uint64:
+			val.SetUint(u)
+		case reflect.Int64:
+			val.SetInt(int64(u))
+		default:
+			return fmt.Errorf("unsupported fixed64 type: %v", field.Kind)
+		}
+
+	case WIRETYPE_LENGTH_DELIMITED:
+		data, err := decodeLengthDelimited(buf, i)
+		if err != nil {
+			return err
+		}
+		switch field.Kind {
+		case reflect.String:
+			val.SetString(string(data))
+		case reflect.Slice:
+			if val.Type().Elem().Kind() == reflect.Uint8 {
+				val.SetBytes(data)
+			} else {
+				return fmt.Errorf("unsupported slice type for length-delimited: %v", val.Type())
 			}
-		}
-		if f == nil {
-			return fmt.Errorf("unknown field number %d", fieldNum)
-		}
-
-		wt := wireTypeFromNum(wireNum)
-		if wt == "" {
-			return fmt.Errorf("unsupported wire type %d", wireNum)
-		}
-
-		switch wt {
-		case WIRETYPE_VARINT:
-			val, err := decodeVarint(data, &i)
-			if err != nil {
+		case reflect.Struct:
+			// Embedded message
+			if err := Unmarshal(data, val.Addr().Interface()); err != nil {
 				return err
 			}
-			switch f.Kind {
-			case reflect.Int, reflect.Int32, reflect.Int64:
-				f.SetValue(rv, int64(val))
-			case reflect.Uint32, reflect.Uint64:
-				f.SetValue(rv, val)
-			case reflect.Bool:
-				f.SetValue(rv, val != 0)
-			}
-
-		case WIRETYPE_FIXED_32:
-			if i+4 > len(data) {
-				return fmt.Errorf("buffer underflow for fixed32")
-			}
-			val := binary.LittleEndian.Uint32(data[i:])
-			i += 4
-			f.SetValue(rv, val)
-
-		case WIRETYPE_FIXED_64:
-			if i+8 > len(data) {
-				return fmt.Errorf("buffer underflow for fixed64")
-			}
-			val := binary.LittleEndian.Uint64(data[i:])
-			i += 8
-			f.SetValue(rv, val)
-
-		case WIRETYPE_LENGTH_DELIMITED:
-			length, err := decodeVarint(data, &i)
-			if err != nil {
-				return err
-			}
-			if i+int(length) > len(data) {
-				return fmt.Errorf("buffer underflow for length-delimited")
-			}
-			fieldBytes := data[i : i+int(length)]
-			i += int(length)
-
-			switch f.Kind {
-			case reflect.String:
-				f.SetValue(rv, string(fieldBytes))
-			case reflect.Slice:
-				if f.Kind == reflect.Slice && rv.FieldByName(f.Name).Type().Elem().Kind() == reflect.Uint8 {
-					f.SetValue(rv, fieldBytes)
-				}
-			case reflect.Struct:
-				nestedPtr := reflect.New(rv.FieldByName(f.Name).Type())
-				if err := DeserializeStruct(fieldBytes, nestedPtr.Interface()); err != nil {
-					return err
-				}
-				if f.IsPointer {
-					rv.FieldByName(f.Name).Set(nestedPtr)
-				} else {
-					rv.FieldByName(f.Name).Set(nestedPtr.Elem())
-				}
-			}
+		default:
+			return fmt.Errorf("unsupported length-delimited type: %v", field.Kind)
 		}
+
+	default:
+		return fmt.Errorf("unsupported wire type: %v", wireType)
 	}
+
 	return nil
+}
+
+func decodeRepeatedOrMap(field *Field, val reflect.Value, buf []byte, i *int, wireType WireType) error {
+	if field.Kind == reflect.Map {
+		// Handle map entry
+		if wireType != WIRETYPE_LENGTH_DELIMITED {
+			return fmt.Errorf("map field must use length-delimited wire type")
+		}
+
+		entryData, err := decodeLengthDelimited(buf, i)
+		if err != nil {
+			return err
+		}
+
+		// Decode key-value pairs from the entry
+		var key, value string
+		j := 0
+		for j < len(entryData) {
+			fieldNum, entryWireType, err := decodeTag(entryData, &j)
+			if err != nil {
+				return err
+			}
+
+			if entryWireType != WIRETYPE_LENGTH_DELIMITED {
+				return fmt.Errorf("map entry fields must be length-delimited")
+			}
+
+			data, err := decodeLengthDelimited(entryData, &j)
+			if err != nil {
+				return err
+			}
+
+			if fieldNum == 1 {
+				key = string(data)
+			} else if fieldNum == 2 {
+				value = string(data)
+			}
+		}
+
+		val.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+		return nil
+	}
+
+	// Handle repeated fields (slices)
+	elemType := val.Type().Elem()
+
+	var newElem reflect.Value
+	switch wireType {
+	case WIRETYPE_VARINT:
+		newElem = reflect.New(elemType).Elem()
+		u, err := decodeVarint(buf, i)
+		if err != nil {
+			return err
+		}
+
+		switch elemType.Kind() {
+		case reflect.Bool:
+			newElem.SetBool(u != 0)
+		case reflect.Int32, reflect.Int64, reflect.Int:
+			newElem.SetInt(int64(u))
+		case reflect.Uint32, reflect.Uint64, reflect.Uint:
+			newElem.SetUint(u)
+		default:
+			return fmt.Errorf("unsupported repeated varint type: %v", elemType.Kind())
+		}
+
+	case WIRETYPE_FIXED_32:
+		newElem = reflect.New(elemType).Elem()
+		u, err := decodeFixed32(buf, i)
+		if err != nil {
+			return err
+		}
+
+		switch elemType.Kind() {
+		case reflect.Float32:
+			newElem.SetFloat(float64(math.Float32frombits(u)))
+		case reflect.Uint32:
+			newElem.SetUint(uint64(u))
+		case reflect.Int32:
+			newElem.SetInt(int64(int32(u)))
+		default:
+			return fmt.Errorf("unsupported repeated fixed32 type: %v", elemType.Kind())
+		}
+
+	case WIRETYPE_FIXED_64:
+		newElem = reflect.New(elemType).Elem()
+		u, err := decodeFixed64(buf, i)
+		if err != nil {
+			return err
+		}
+
+		switch elemType.Kind() {
+		case reflect.Float64:
+			newElem.SetFloat(math.Float64frombits(u))
+		case reflect.Uint64:
+			newElem.SetUint(u)
+		case reflect.Int64:
+			newElem.SetInt(int64(u))
+		default:
+			return fmt.Errorf("unsupported repeated fixed64 type: %v", elemType.Kind())
+		}
+
+	case WIRETYPE_LENGTH_DELIMITED:
+		data, err := decodeLengthDelimited(buf, i)
+		if err != nil {
+			return err
+		}
+
+		if elemType.Kind() == reflect.String {
+			newElem = reflect.ValueOf(string(data))
+		} else if elemType.Kind() == reflect.Struct {
+			// Repeated embedded message
+			newElem = reflect.New(elemType).Elem()
+			if err := Unmarshal(data, newElem.Addr().Interface()); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("unsupported repeated length-delimited type: %v", elemType.Kind())
+		}
+
+	default:
+		return fmt.Errorf("unsupported wire type for repeated field: %v", wireType)
+	}
+
+	val.Set(reflect.Append(val, newElem))
+	return nil
+}
+
+func skipField(buf []byte, i *int, wireType WireType) error {
+	switch wireType {
+	case WIRETYPE_VARINT:
+		_, err := decodeVarint(buf, i)
+		return err
+	case WIRETYPE_FIXED_32:
+		if *i+4 > len(buf) {
+			return fmt.Errorf("buffer underflow skipping fixed32")
+		}
+		*i += 4
+		return nil
+	case WIRETYPE_FIXED_64:
+		if *i+8 > len(buf) {
+			return fmt.Errorf("buffer underflow skipping fixed64")
+		}
+		*i += 8
+		return nil
+	case WIRETYPE_LENGTH_DELIMITED:
+		_, err := decodeLengthDelimited(buf, i)
+		return err
+	default:
+		return fmt.Errorf("cannot skip unsupported wire type: %v", wireType)
+	}
 }
