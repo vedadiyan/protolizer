@@ -238,16 +238,8 @@ func (ser *Serializable) SerializeRepeated(wireType WireType, packed bool) ([][]
 			packed = append(packed, b...)
 		}
 
-		// prefix with length
-		var lengthBuf []byte
-		length := uint64(len(packed))
-		for length >= 0x80 {
-			lengthBuf = append(lengthBuf, byte(length)|0x80)
-			length >>= 7
-		}
-		lengthBuf = append(lengthBuf, byte(length))
-
-		return [][]byte{append(lengthBuf, packed...)}, nil
+		lenBuf := encodeVarint(uint64(len(packed)))
+		return [][]byte{append(lenBuf, packed...)}, nil
 	}
 
 	// --- unpacked encoding ---
