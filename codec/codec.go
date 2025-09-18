@@ -1105,3 +1105,196 @@ func main() {
 	fmt.Printf("Complex record: %x\n", recordData)
 	fmt.Printf("Record length: %d bytes\n", len(recordData))
 }
+
+func main2() {
+	fieldCodec := NewFieldCodec()
+	decoder := NewFieldDecoder()
+	repeatedCodec := NewRepeatedCodec()
+	mapCodec := NewMapCodec()
+	msgCodec := NewMessageCodec()
+
+	// =========================================================================
+	// ENCODE TEST MESSAGE
+	// =========================================================================
+	type testField struct {
+		num  int
+		typ  string // semantic type
+		data []byte
+	}
+
+	fields := []testField{}
+
+	// Basic
+	fields = append(fields, testField{1, "varint",
+		fieldCodec.EncodeField(&Field{Number: 1, Value: NewVarintValue(123)})})
+	fields = append(fields, testField{2, "fixed32",
+		fieldCodec.EncodeField(&Field{Number: 2, Value: NewFixed32Value(456)})})
+	fields = append(fields, testField{3, "fixed64",
+		fieldCodec.EncodeField(&Field{Number: 3, Value: NewFixed64Value(789)})})
+	fields = append(fields, testField{4, "string",
+		fieldCodec.EncodeField(&Field{Number: 4, Value: NewStringValue("hello")})})
+	fields = append(fields, testField{5, "bytes",
+		fieldCodec.EncodeField(&Field{Number: 5, Value: NewBytesValue([]byte{0xaa, 0xbb})})})
+	fields = append(fields, testField{6, "enum",
+		fieldCodec.EncodeField(&Field{Number: 6, Value: NewEnumValue(42)})})
+
+	// Repeated packed
+	packedVarints := repeatedCodec.EncodePackedVarint([]int64{10, 20, 30})
+	fields = append(fields, testField{7, "packedVarint",
+		fieldCodec.EncodeField(&Field{Number: 7, Value: NewBytesValue(packedVarints)})})
+
+	packedFixed32 := repeatedCodec.EncodePackedFixed32([]int32{100, 200, 300})
+	fields = append(fields, testField{8, "packedFixed32",
+		fieldCodec.EncodeField(&Field{Number: 8, Value: NewBytesValue(packedFixed32)})})
+
+	packedFloats := repeatedCodec.EncodePackedFloat32([]float32{1.5, 2.5})
+	fields = append(fields, testField{9, "packedFloat32",
+		fieldCodec.EncodeField(&Field{Number: 9, Value: NewBytesValue(packedFloats)})})
+
+	// Map
+	mapEntries := mapCodec.EncodeStringInt64Map(map[string]int64{"a": 1, "b": 2})
+	for _, entry := range mapEntries {
+		fields = append(fields, testField{10, "mapEntry",
+			fieldCodec.EncodeField(&Field{Number: 10, Value: NewBytesValue(entry)})})
+	}
+
+	// Nested message
+	nested := []byte{}
+	nested = append(nested, fieldCodec.EncodeField(&Field{Number: 1, Value: NewStringValue("nested")})...)
+	nestedMsg := msgCodec.EncodeMessage(nested)
+	fields = append(fields, testField{11, "nested",
+		fieldCodec.EncodeField(&Field{Number: 11, Value: NewBytesValue(nestedMsg)})})
+
+	// Concatenate
+	message := []byte{}
+	for _, f := range fields {
+		message = append(message, f.data...)
+	}
+	fmt.Printf("Encoded test message: %x\n", message)
+
+	// =========================================================================
+	// DECODE TEST MESSAGE
+	// =========================================================================
+	pos := 0
+	for pos < len(message) {
+		fieldNum, wireType, consumed, err := decoder.DecodeFieldHeader(message, pos)
+		if err != nil {
+			fmt.Printf("Header decode error: %v\n", err)
+			break
+		}
+		pos += consumed
+
+		// lookup metadata
+		var ftype string
+		for _, f := range fields {
+			if f.num == int(fieldNum) {
+				ftype = f.typ
+				break
+			}
+		}
+
+		switch wireType {
+		case WireTypeVarint:
+			val, n, err := decoder.DecodeVarintField(message, pos)
+			if err != nil {
+				fmt.Printf("Varint decode error: %v\n", err)
+				return
+			}
+			fmt.Printf("Decoded Varint (field %d, %s): %d\n", fieldNum, ftype, val)
+			pos += n
+
+		case WireTypeI32:
+			val, n, err := decoder.DecodeFixed32Field(message, pos)
+			if err != nil {
+				fmt.Printf("Fixed32 decode error: %v\n", err)
+				return
+			}
+			fmt.Printf("Decoded Fixed32 (field %d, %s): %d\n", fieldNum, ftype, val)
+			pos += n
+
+		case WireTypeI64:
+			val, n, err := decoder.DecodeFixed64Field(message, pos)
+			if err != nil {
+				fmt.Printf("Fixed64 decode error: %v\n", err)
+				return
+			}
+			fmt.Printf("Decoded Fixed64 (field %d, %s): %d\n", fieldNum, ftype, val)
+			pos += n
+
+		case WireTypeLen:
+			switch ftype {
+			case "string":
+				val, n, err := decoder.DecodeStringField(message, pos)
+				if err != nil {
+					fmt.Printf("String decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded String (field %d): %s\n", fieldNum, val)
+				pos += n
+
+			case "bytes":
+				val, n, err := decoder.DecodeBytesField(message, pos)
+				if err != nil {
+					fmt.Printf("Bytes decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded Bytes (field %d): %x\n", fieldNum, val)
+				pos += n
+
+			case "packedVarint":
+				val, n, err := repeatedCodec.DecodePackedVarint(message, pos)
+				if err != nil {
+					fmt.Printf("Packed varint decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded Packed Varint (field %d): %v\n", fieldNum, val)
+				pos += n
+
+			case "packedFixed32":
+				raw, n, err := decoder.DecodeBytesField(message, pos)
+				if err != nil {
+					fmt.Printf("PackedFixed32 length-delimited decode error: %v\n", err)
+					return
+				}
+				vals, _, err := repeatedCodec.DecodePackedFixed32(raw, 0)
+				if err != nil {
+					fmt.Printf("PackedFixed32 decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded PackedFixed32 (field %d): %v\n", fieldNum, vals)
+				pos += n
+
+			// case "packedFloat32":
+			// 	val, n, err := repeatedCodec.DecodePackedFloat32(message, pos)
+			// 	if err != nil {
+			// 		fmt.Printf("Packed float32 decode error: %v\n", err)
+			// 		return
+			// 	}
+			// 	fmt.Printf("Decoded Packed Float32 (field %d): %v\n", fieldNum, val)
+			// 	pos += n
+
+			case "mapEntry":
+				k, v, n, err := mapCodec.DecodeStringInt64MapEntry(message, pos)
+				if err != nil {
+					fmt.Printf("Map entry decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded Map Entry (field %d): %s -> %d\n", fieldNum, k, v)
+				pos += n
+
+			case "nested":
+				val, n, err := decoder.DecodeBytesField(message, pos)
+				if err != nil {
+					fmt.Printf("Nested msg decode error: %v\n", err)
+					return
+				}
+				fmt.Printf("Decoded Nested (field %d): %x\n", fieldNum, val)
+				pos += n
+			}
+
+		default:
+			fmt.Printf("Unsupported wireType %d\n", wireType)
+			return
+		}
+	}
+}
