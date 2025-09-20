@@ -1,4 +1,4 @@
-package main
+package codec
 
 func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 	tagBytes, err := EncodeTag(n, wireType)

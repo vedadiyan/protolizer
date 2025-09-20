@@ -1,4 +1,4 @@
-package main
+package codec
 
 func EncodeMessage(content []byte) []byte {
 	return EncodeBytes(content)

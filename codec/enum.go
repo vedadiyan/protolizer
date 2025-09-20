@@ -1,4 +1,4 @@
-package main
+package codec
 
 func EncodeEnum(value int32) []byte {
 	return EncodeVarint(int64(value))

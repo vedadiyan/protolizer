@@ -1,4 +1,4 @@
-package main
+package codec
 
 func EncodeBool(value bool) []byte {
 	if value {

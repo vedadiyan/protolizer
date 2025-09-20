@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/vedadiyan/protolizer/codec"
 )
 
 type (
-	WireType     string
 	Serializable struct {
 		Value any
 	}
@@ -20,7 +21,7 @@ type (
 		MapValue string
 	}
 	ProtobufInfo struct {
-		WireType WireType
+		WireType codec.WireType
 		FieldNum int
 		Label    string
 		Name     string
@@ -32,19 +33,12 @@ type (
 		Kind      reflect.Kind
 		IsPointer bool
 		Tags      *Tags
+		Encode    func(reflect.Value) ([]byte, error)
+		Decode    func([]byte, reflect.Value, int) (int, error)
 	}
 	Type struct {
 		Fields []*Field
 	}
-)
-
-const (
-	WIRETYPE_VARINT           WireType = "varint"
-	WIRETYPE_FIXED_64         WireType = "fixed64"
-	WIRETYPE_LENGTH_DELIMITED WireType = "bytes"
-	WIRETYPE_START_GROUP      WireType = "start_group"
-	WIRETYPE_END_GROUP        WireType = "end_group"
-	WIRETYPE_FIXED_32         WireType = "fixed32"
 )
 
 var (
@@ -64,16 +58,18 @@ func RegisterType(t reflect.Type) *Type {
 	}
 	out := new(Type)
 
-	// Handle pointer types
 	elemType := t
 	if t.Kind() == reflect.Ptr {
 		elemType = t.Elem()
 	}
 
-	out.Fields = make([]*Field, elemType.NumField())
+	out.Fields = make([]*Field, 0)
 	for i := range elemType.NumField() {
 		f := NewField(elemType.Field(i))
-		out.Fields[i] = f
+		if !f.Tags.IsProtobuf() {
+			continue
+		}
+		out.Fields = append(out.Fields, f)
 	}
 	_registry[t] = out
 	return out
@@ -93,13 +89,136 @@ func NewField(f reflect.StructField) *Field {
 	out.Name = f.Name
 	out.Kind = f.Type.Kind()
 
-	// Check for pointer types
 	if f.Type.Kind() == reflect.Ptr {
 		out.IsPointer = true
 		out.Kind = f.Type.Elem().Kind()
 	}
-
 	out.Tags = NewTags(f.Tag)
+	out.Encode = func(v reflect.Value) ([]byte, error) {
+		if out.IsPointer {
+			v = v.Elem()
+		}
+		tag, err := codec.EncodeTag(int32(out.Tags.Protobuf.FieldNum), out.Tags.Protobuf.WireType)
+		if err != nil {
+			return nil, err
+		}
+		switch out.Kind {
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
+			{
+				if out.Tags.Protobuf.WireType == codec.WireTypeI32 {
+					return append(tag, codec.EncodeFixed32(int32(v.Int()))...), nil
+				}
+				if out.Tags.Protobuf.WireType == codec.WireTypeI64 {
+					return append(tag, codec.EncodeFixed64(v.Int())...), nil
+				}
+				return append(tag, codec.EncodeVarint(v.Int())...), nil
+			}
+		case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+			{
+				return append(tag, codec.EncodeUvarint(v.Uint())...), nil
+			}
+		case reflect.Float32:
+			{
+				return append(tag, codec.EncodeFloat32(float32(v.Float()))...), nil
+			}
+		case reflect.Float64:
+			{
+				return append(tag, codec.EncodeFloat64(v.Float())...), nil
+			}
+		case reflect.Bool:
+			{
+				return append(tag, codec.EncodeBool(v.Bool())...), nil
+			}
+		case reflect.String:
+			{
+				return append(tag, codec.EncodeString(v.String())...), nil
+			}
+		}
+		return nil, fmt.Errorf("")
+	}
+	out.Decode = func(b []byte, v reflect.Value, pos int) (int, error) {
+		if out.IsPointer {
+			v = v.Elem()
+		}
+		_, _, n, err := codec.DecodeTag(b, pos)
+		if err != nil {
+			return pos, err
+		}
+		pos += n
+		switch out.Kind {
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
+			{
+				if out.Tags.Protobuf.WireType == codec.WireTypeI32 {
+					value, consumed, err := codec.DecodeFixed32(b, pos)
+					if err != nil {
+						return pos, err
+					}
+					v.SetInt(int64(value))
+					return pos + consumed, nil
+				}
+				if out.Tags.Protobuf.WireType == codec.WireTypeI64 {
+					value, consumed, err := codec.DecodeFixed64(b, pos)
+					if err != nil {
+						return pos, err
+					}
+					v.SetInt(value)
+					return pos + consumed, nil
+				}
+				value, consumed, err := codec.DecodeVarint(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetInt(value)
+				return pos + consumed, nil
+			}
+		case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+			{
+				value, consumed, err := codec.DecodeUvarint(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetUint(value)
+				return pos + consumed, nil
+			}
+		case reflect.Float32:
+			{
+				value, consumed, err := codec.DecodeFloat32(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetFloat(float64(value))
+				return pos + consumed, nil
+			}
+		case reflect.Float64:
+			{
+				value, consumed, err := codec.DecodeFloat64(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetFloat(value)
+				return pos + consumed, nil
+			}
+		case reflect.Bool:
+			{
+				value, consumed, err := codec.DecodeBool(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetBool(value)
+				return pos + consumed, nil
+			}
+		case reflect.String:
+			{
+				value, consumed, err := codec.DecodeString(b, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetString(value)
+				return pos + consumed, nil
+			}
+		}
+		return pos, fmt.Errorf("")
+	}
 	return out
 }
 
@@ -125,7 +244,7 @@ func ParseProtoTag(tag string) *ProtobufInfo {
 
 	out := new(ProtobufInfo)
 	if l > 0 {
-		out.WireType = WireType(segments[0])
+		out.WireType = codec.GetWireType(segments[0])
 	}
 	if l > 1 {
 		out.FieldNum = fieldNum
@@ -155,149 +274,4 @@ func GetKind(t reflect.Type) (reflect.Kind, bool) {
 
 func (t *Tags) IsProtobuf() bool {
 	return t.Protobuf != nil
-}
-
-func wireTypeNum(wt WireType) int {
-	switch wt {
-	case WIRETYPE_VARINT:
-		return 0
-	case WIRETYPE_FIXED_64:
-		return 1
-	case WIRETYPE_LENGTH_DELIMITED:
-		return 2
-	case WIRETYPE_START_GROUP:
-		return 3
-	case WIRETYPE_END_GROUP:
-		return 4
-	case WIRETYPE_FIXED_32:
-		return 5
-	default:
-		return -1
-	}
-}
-
-func WireTypeFromNum(n int) WireType {
-	switch n {
-	case 0:
-		return WIRETYPE_VARINT
-	case 1:
-		return WIRETYPE_FIXED_64
-	case 2:
-		return WIRETYPE_LENGTH_DELIMITED
-	case 3:
-		return WIRETYPE_START_GROUP
-	case 4:
-		return WIRETYPE_END_GROUP
-	case 5:
-		return WIRETYPE_FIXED_32
-	default:
-		return ""
-	}
-}
-
-func Marshal(v interface{}) ([]byte, error) {
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		if val.IsNil() {
-			return nil, fmt.Errorf("cannot marshal nil pointer")
-		}
-		val = val.Elem()
-	}
-
-	if val.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("can only marshal struct types")
-	}
-
-	typ := RegisterType(reflect.TypeOf(v))
-	var result []byte
-
-	for i, field := range typ.Fields {
-		if !field.Tags.IsProtobuf() {
-			continue
-		}
-
-		fieldVal := val.Field(i)
-		if field.IsPointer {
-			if fieldVal.IsNil() {
-				continue // Skip nil pointers
-			}
-			fieldVal = fieldVal.Elem()
-		}
-
-		// Skip zero values for optional fields
-		if fieldVal.IsZero() && field.Tags.Protobuf.Label != "required" {
-			continue
-		}
-
-		encoded, err := EncodeField(field, fieldVal)
-		if err != nil {
-			return nil, fmt.Errorf("error encoding field %s: %w", field.Name, err)
-		}
-
-		result = append(result, encoded...)
-	}
-
-	return result, nil
-}
-
-func Unmarshal(data []byte, v interface{}) error {
-	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
-		return fmt.Errorf("unmarshal target must be a non-nil pointer")
-	}
-
-	val = val.Elem()
-	if val.Kind() != reflect.Struct {
-		return fmt.Errorf("unmarshal target must be a pointer to struct")
-	}
-
-	typ := RegisterType(reflect.TypeOf(v))
-
-	// Create field number to field index map
-	fieldMap := make(map[int]int)
-	for i, field := range typ.Fields {
-		if field.Tags.IsProtobuf() {
-			fieldMap[field.Tags.Protobuf.FieldNum] = i
-		}
-	}
-
-	// Initialize slices and maps for repeated fields
-	for i, field := range typ.Fields {
-		if !field.Tags.IsProtobuf() {
-			continue
-		}
-		fieldVal := val.Field(i)
-		if field.Kind == reflect.Slice && fieldVal.IsNil() {
-			fieldVal.Set(reflect.MakeSlice(fieldVal.Type(), 0, 0))
-		}
-		if field.Kind == reflect.Map && fieldVal.IsNil() {
-			fieldVal.Set(reflect.MakeMap(fieldVal.Type()))
-		}
-	}
-
-	i := 0
-	for i < len(data) {
-		fieldNum, wireType, err := DecodeTag(data, &i)
-		if err != nil {
-			return fmt.Errorf("error decoding tag: %w", err)
-		}
-
-		fieldIndex, exists := fieldMap[fieldNum]
-		if !exists {
-			// Skip unknown field
-			if err := SkipField(data, &i, wireType); err != nil {
-				return fmt.Errorf("error skipping unknown field %d: %w", fieldNum, err)
-			}
-			continue
-		}
-
-		field := typ.Fields[fieldIndex]
-		fieldVal := val.Field(fieldIndex)
-
-		if err := DecodeField(field, fieldVal, data, &i, wireType); err != nil {
-			return fmt.Errorf("error decoding field %s: %w", field.Name, err)
-		}
-	}
-
-	return nil
 }

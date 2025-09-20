@@ -1,4 +1,4 @@
-package main
+package codec
 
 func EncodeZigzag(value int64) []byte {
 	encoded := ZigzagEncode(value)
