@@ -30,10 +30,9 @@ type (
 	Field struct {
 		Name      string
 		Kind      reflect.Kind
+		Index     []int
 		IsPointer bool
 		Tags      *Tags
-		Encode    func(reflect.Value) ([]byte, error)
-		Decode    func([]byte, reflect.Value, int) (int, error)
 	}
 	Type struct {
 		Fields []*Field
@@ -83,6 +82,14 @@ func RegisterType(t reflect.Type) *Type {
 	return out
 }
 
+func (t *Type) Encode(v reflect.Value) ([]byte, error) {
+	return Encode(v, reflect.Struct, 1, WireTypeLen)
+}
+
+func (t *Type) Decode(v reflect.Value, bytes []byte, pos int) (int, error) {
+	return Decode(v, reflect.Struct, bytes, pos)
+}
+
 func NewField(f reflect.StructField) *Field {
 	out := new(Field)
 	out.Name = f.Name
@@ -92,14 +99,17 @@ func NewField(f reflect.StructField) *Field {
 		out.IsPointer = true
 		out.Kind = f.Type.Elem().Kind()
 	}
+	out.Index = f.Index
 	out.Tags = NewTags(f.Tag)
-	out.Encode = func(v reflect.Value) ([]byte, error) {
-		return Encode(v, out.Kind, out.Tags.Protobuf.FieldNum, out.Tags.Protobuf.WireType)
-	}
-	out.Decode = func(b []byte, v reflect.Value, pos int) (int, error) {
-		return Decode(v, out.Kind, b, pos)
-	}
 	return out
+}
+
+func (f *Field) Encode(v reflect.Value) ([]byte, error) {
+	return Encode(v, f.Kind, f.Tags.Protobuf.FieldNum, f.Tags.Protobuf.WireType)
+}
+
+func (f *Field) Decode(b []byte, v reflect.Value, pos int) (int, error) {
+	return Decode(v, f.Kind, b, pos)
 }
 
 func NewTags(t reflect.StructTag) *Tags {
