@@ -28,7 +28,9 @@ func TestSoFar(t *testing.T) {
 	u.Str = "ok"
 	u.Ui32 = 3900
 	u.Ui64 = 5678
-	typ := RegisterType(reflect.TypeOf(new(users.User)))
+	u.Sfixed32 = 3
+	u.Sfixed64 = 5
+	typ := RegisterType(reflect.TypeOf(new(users.General)))
 
 	data, err := typ.Encode(reflect.ValueOf(u))
 	if err != nil {
@@ -41,7 +43,7 @@ func TestSoFar(t *testing.T) {
 	fmt.Println(data2)
 
 	u2 := new(users.General)
-	pos, err := typ.Decode(reflect.ValueOf(u2), data2, 0)
+	pos, err := typ.Decode(reflect.ValueOf(u2), data, 0)
 	if err != nil {
 		t.FailNow()
 	}

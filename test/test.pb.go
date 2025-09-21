@@ -76,6 +76,8 @@ type General struct {
 	Ui32          uint32                 `protobuf:"varint,10,opt,name=ui32,proto3" json:"ui32,omitempty"`
 	Ui64          uint64                 `protobuf:"varint,11,opt,name=ui64,proto3" json:"ui64,omitempty"`
 	Enum          TestEnum               `protobuf:"varint,12,opt,name=enum,proto3,enum=test.test.TestEnum" json:"enum,omitempty"`
+	Sfixed32      int32                  `protobuf:"fixed32,13,opt,name=sfixed32,proto3" json:"sfixed32,omitempty"`
+	Sfixed64      int64                  `protobuf:"fixed64,14,opt,name=sfixed64,proto3" json:"sfixed64,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -180,6 +182,20 @@ func (x *General) GetEnum() TestEnum {
 	return TestEnum_TEST
 }
 
+func (x *General) GetSfixed32() int32 {
+	if x != nil {
+		return x.Sfixed32
+	}
+	return 0
+}
+
+func (x *General) GetSfixed64() int64 {
+	if x != nil {
+		return x.Sfixed64
+	}
+	return 0
+}
+
 type Fixed struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Fx32          uint32                 `protobuf:"fixed32,1,opt,name=fx32,proto3" json:"fx32,omitempty"`
@@ -237,7 +253,7 @@ var File_test_proto protoreflect.FileDescriptor
 const file_test_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"test.proto\x12\ttest.test\"\xe4\x01\n" +
+	"test.proto\x12\ttest.test\"\x9c\x02\n" +
 	"\aGeneral\x12\x10\n" +
 	"\x03i32\x18\x01 \x01(\x05R\x03i32\x12\x10\n" +
 	"\x03i64\x18\x02 \x01(\x03R\x03i64\x12\x10\n" +
@@ -249,7 +265,9 @@ const file_test_proto_rawDesc = "" +
 	"\x04ui32\x18\n" +
 	" \x01(\rR\x04ui32\x12\x12\n" +
 	"\x04ui64\x18\v \x01(\x04R\x04ui64\x12'\n" +
-	"\x04enum\x18\f \x01(\x0e2\x13.test.test.TestEnumR\x04enum\"/\n" +
+	"\x04enum\x18\f \x01(\x0e2\x13.test.test.TestEnumR\x04enum\x12\x1a\n" +
+	"\bsfixed32\x18\r \x01(\x0fR\bsfixed32\x12\x1a\n" +
+	"\bsfixed64\x18\x0e \x01(\x10R\bsfixed64\"/\n" +
 	"\x05Fixed\x12\x12\n" +
 	"\x04fx32\x18\x01 \x01(\aR\x04fx32\x12\x12\n" +
 	"\x04fx64\x18\x02 \x01(\x06R\x04fx64*\x14\n" +

@@ -19,6 +19,8 @@ message General {
     uint32 ui32 = 10;
     uint64 ui64 = 11;
     TestEnum enum = 12;
+    sfixed32 sfixed32 = 13;
+    sfixed64 sfixed64 = 14;
 }
 
 message Fixed {

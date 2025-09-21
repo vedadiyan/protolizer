@@ -35,6 +35,12 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
+			if wireType == WireTypeI32 {
+				return EncodeFixed32(int32(v.Int())), nil
+			}
+			if wireType == WireTypeI64 {
+				return EncodeFixed64(int64(v.Int())), nil
+			}
 			return EncodeVarint(v.Int()), nil
 		}
 	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
@@ -147,6 +153,22 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			if v.Kind() == reflect.Pointer {
 				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
+			}
+			if wireType == WireTypeI32 {
+				value, consumed, err := DecodeFixed32(bytes, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetInt(int64(value))
+				return pos + consumed, nil
+			}
+			if wireType == WireTypeI64 {
+				value, consumed, err := DecodeFixed64(bytes, pos)
+				if err != nil {
+					return pos, err
+				}
+				v.SetInt(value)
+				return pos + consumed, nil
 			}
 			value, consumed, err := DecodeVarint(bytes, pos)
 			if err != nil {
@@ -265,7 +287,9 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 				if err != nil {
 					return consumed, err
 				}
-				pos = consumed
+				if consumed != 0 {
+					pos = consumed
+				}
 				if pos >= len(bytes) {
 					break
 				}
