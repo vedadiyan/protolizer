@@ -14,12 +14,15 @@ func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 }
 
 func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType) ([]byte, error) {
-	if v.Kind() == reflect.Pointer {
-		v = v.Elem()
-	}
 	tag, err := EncodeTag(int32(fieldNumber), wireType)
 	if err != nil {
 		return nil, err
+	}
+	if v.IsZero() {
+		return nil, nil
+	}
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
 	}
 	bytes, err := RawEncode(v, kind, fieldNumber, wireType)
 	if err != nil {
@@ -121,10 +124,13 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 	return nil, fmt.Errorf("")
 }
 
-func Decode(v reflect.Value, kind reflect.Kind, bytes []byte, pos int) (int, error) {
-	_, wireType, consumed, err := DecodeTag(bytes, pos)
+func Decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes []byte, pos int) (int, error) {
+	fieldNum, wireType, consumed, err := DecodeTag(bytes, pos)
 	if err != nil {
 		return pos, err
+	}
+	if fieldNum != int32(expectedFieldNumber) {
+		return 0, nil
 	}
 	return RawDecode(v, kind, bytes, wireType, pos+consumed)
 
@@ -135,7 +141,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*int64]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			if wireType == WireTypeI32 {
@@ -164,7 +170,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*uint64]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			value, consumed, err := DecodeUvarint(bytes, pos)
@@ -177,7 +183,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.Float32:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*float32]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			value, consumed, err := DecodeFloat32(bytes, pos)
@@ -190,7 +196,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.Float64:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*float64]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			value, consumed, err := DecodeFloat64(bytes, pos)
@@ -203,7 +209,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.Bool:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*bool]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			value, consumed, err := DecodeBool(bytes, pos)
@@ -216,7 +222,7 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 	case reflect.String:
 		{
 			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.ValueOf(reflect.TypeFor[*string]()))
+				v.Set(reflect.New(v.Type().Elem()))
 				v = v.Elem()
 			}
 			value, consumed, err := DecodeString(bytes, pos)
@@ -248,9 +254,10 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 					return consumed, err
 				}
 				pos += consumed
+				if pos >= len(bytes) {
+					break
+				}
 			}
-
-			v.Set(val)
 			return pos, nil
 		}
 	}

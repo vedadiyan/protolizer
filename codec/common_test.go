@@ -2,8 +2,9 @@ package codec
 
 import (
 	"reflect"
-	"sort"
 	"testing"
+
+	users "github.com/vedadiyan/protolizer/test"
 )
 
 type User struct {
@@ -12,23 +13,21 @@ type User struct {
 }
 
 func TestSoFar(t *testing.T) {
-	u := new(User)
+	u := new(users.User)
 	u.FirstName = "test"
-	typ := RegisterType(reflect.TypeOf(new(User)))
-	sort.Slice(typ.Fields, func(i, j int) bool {
-		return typ.Fields[i].Tags.Protobuf.Name < typ.Fields[j].Tags.Protobuf.Name
-	})
+	typ := RegisterType(reflect.TypeOf(new(users.User)))
 
 	data, err := typ.Encode(reflect.ValueOf(u))
 	if err != nil {
 		t.FailNow()
 	}
-	u2 := new(User)
+	u2 := new(users.User)
 	pos, err := typ.Decode(reflect.ValueOf(u2), data, 0)
 	if err != nil {
 		t.FailNow()
 	}
 	_ = pos
+
 	// v := reflect.ValueOf(u).Elem().FieldByName("FirstName")
 
 	// bytes, _ := typ.Fields[1].Encode(v)

@@ -3,6 +3,7 @@ package codec
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,16 +79,25 @@ func RegisterType(t reflect.Type) *Type {
 		}
 		out.Fields = append(out.Fields, f)
 	}
+	sort.Slice(out.Fields, func(i, j int) bool {
+		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
+	})
 	_registry[t] = out
 	return out
 }
 
 func (t *Type) Encode(v reflect.Value) ([]byte, error) {
-	return Encode(v, reflect.Struct, 1, WireTypeLen)
+	if v.IsZero() {
+		return nil, nil
+	}
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	return RawEncode(v, reflect.Struct, 1, WireTypeLen)
 }
 
 func (t *Type) Decode(v reflect.Value, bytes []byte, pos int) (int, error) {
-	return Decode(v, reflect.Struct, bytes, pos)
+	return RawDecode(v, reflect.Struct, bytes, WireTypeLen, pos)
 }
 
 func NewField(f reflect.StructField) *Field {
@@ -109,7 +119,7 @@ func (f *Field) Encode(v reflect.Value) ([]byte, error) {
 }
 
 func (f *Field) Decode(b []byte, v reflect.Value, pos int) (int, error) {
-	return Decode(v, f.Kind, b, pos)
+	return Decode(v, f.Tags.Protobuf.FieldNum, f.Kind, b, pos)
 }
 
 func NewTags(t reflect.StructTag) *Tags {
