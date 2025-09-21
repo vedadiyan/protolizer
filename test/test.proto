@@ -21,6 +21,7 @@ message General {
     TestEnum enum = 12;
     sfixed32 sfixed32 = 13;
     sfixed64 sfixed64 = 14;
+    map<int32, string> map = 15;
 }
 
 message Fixed {

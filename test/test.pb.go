@@ -78,6 +78,7 @@ type General struct {
 	Enum          TestEnum               `protobuf:"varint,12,opt,name=enum,proto3,enum=test.test.TestEnum" json:"enum,omitempty"`
 	Sfixed32      int32                  `protobuf:"fixed32,13,opt,name=sfixed32,proto3" json:"sfixed32,omitempty"`
 	Sfixed64      int64                  `protobuf:"fixed64,14,opt,name=sfixed64,proto3" json:"sfixed64,omitempty"`
+	Map           map[int32]string       `protobuf:"bytes,15,rep,name=map,proto3" json:"map,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -196,6 +197,13 @@ func (x *General) GetSfixed64() int64 {
 	return 0
 }
 
+func (x *General) GetMap() map[int32]string {
+	if x != nil {
+		return x.Map
+	}
+	return nil
+}
+
 type Fixed struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Fx32          uint32                 `protobuf:"fixed32,1,opt,name=fx32,proto3" json:"fx32,omitempty"`
@@ -253,7 +261,7 @@ var File_test_proto protoreflect.FileDescriptor
 const file_test_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"test.proto\x12\ttest.test\"\x9c\x02\n" +
+	"test.proto\x12\ttest.test\"\x83\x03\n" +
 	"\aGeneral\x12\x10\n" +
 	"\x03i32\x18\x01 \x01(\x05R\x03i32\x12\x10\n" +
 	"\x03i64\x18\x02 \x01(\x03R\x03i64\x12\x10\n" +
@@ -267,7 +275,11 @@ const file_test_proto_rawDesc = "" +
 	"\x04ui64\x18\v \x01(\x04R\x04ui64\x12'\n" +
 	"\x04enum\x18\f \x01(\x0e2\x13.test.test.TestEnumR\x04enum\x12\x1a\n" +
 	"\bsfixed32\x18\r \x01(\x0fR\bsfixed32\x12\x1a\n" +
-	"\bsfixed64\x18\x0e \x01(\x10R\bsfixed64\"/\n" +
+	"\bsfixed64\x18\x0e \x01(\x10R\bsfixed64\x12-\n" +
+	"\x03map\x18\x0f \x03(\v2\x1b.test.test.General.MapEntryR\x03map\x1a6\n" +
+	"\bMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"/\n" +
 	"\x05Fixed\x12\x12\n" +
 	"\x04fx32\x18\x01 \x01(\aR\x04fx32\x12\x12\n" +
 	"\x04fx64\x18\x02 \x01(\x06R\x04fx64*\x14\n" +
@@ -287,19 +299,21 @@ func file_test_proto_rawDescGZIP() []byte {
 }
 
 var file_test_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_test_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_test_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_test_proto_goTypes = []any{
 	(TestEnum)(0),   // 0: test.test.TestEnum
 	(*General)(nil), // 1: test.test.General
 	(*Fixed)(nil),   // 2: test.test.Fixed
+	nil,             // 3: test.test.General.MapEntry
 }
 var file_test_proto_depIdxs = []int32{
 	0, // 0: test.test.General.enum:type_name -> test.test.TestEnum
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: test.test.General.map:type_name -> test.test.General.MapEntry
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_test_proto_init() }
@@ -313,7 +327,7 @@ func file_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_test_proto_rawDesc), len(file_test_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -96,26 +96,26 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 			mapRange := v.MapRange()
 			for mapRange.Next() {
 				key := mapRange.Key()
-				keyTag, err := EncodeTag(0, 0)
+				keyTag, err := EncodeTag(1, WireTypeVarint)
 				if err != nil {
 					return nil, err
 				}
-				keyBytes, err := RawEncode(key, key.Kind(), fieldNumber, 0)
+				keyBytes, err := RawEncode(key, key.Kind(), fieldNumber, WireTypeVarint)
 				if err != nil {
 					return nil, err
 				}
 				value := mapRange.Value()
-				valueTag, err := EncodeTag(1, 0)
+				valueTag, err := EncodeTag(2, WireTypeLen)
 				if err != nil {
 					return nil, err
 				}
-				valueBytes, err := RawEncode(value, value.Kind(), fieldNumber, 0)
+				valueBytes, err := RawEncode(value, value.Kind(), fieldNumber, WireTypeLen)
 				if err != nil {
 					return nil, err
 				}
 				data = append(data, append(append(keyTag, keyBytes...), append(valueTag, valueBytes...)...)...)
 			}
-			return data, nil
+			return EncodeBytes(data), nil
 		}
 	case reflect.Struct:
 		{

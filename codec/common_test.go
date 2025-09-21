@@ -30,6 +30,8 @@ func TestSoFar(t *testing.T) {
 	u.Ui64 = 5678
 	u.Sfixed32 = 3
 	u.Sfixed64 = 5
+	u.Map = make(map[int32]string)
+	u.Map[1] = "Hello World"
 	typ := RegisterType(reflect.TypeOf(new(users.General)))
 
 	data, err := typ.Encode(reflect.ValueOf(u))
