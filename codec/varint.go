@@ -65,7 +65,6 @@ func DecodeUvarint(data []byte, offset int) (uint64, int, error) {
 
 		shift += 7
 	}
-
 	return 0, 0, fmt.Errorf("truncated varint")
 }
 

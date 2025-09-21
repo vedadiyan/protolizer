@@ -1,4 +1,4 @@
-package protolizer
+package codec
 
 import (
 	"fmt"
