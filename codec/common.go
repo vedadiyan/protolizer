@@ -58,7 +58,7 @@ func init() {
 	_registry = make(map[reflect.Type]*Type)
 }
 
-func RegisterType(t reflect.Type) *Type {
+func CaptureType(t reflect.Type) *Type {
 	_mut.Lock()
 	defer _mut.Unlock()
 	if value, ok := _registry[t]; ok {
@@ -73,8 +73,8 @@ func RegisterType(t reflect.Type) *Type {
 
 	out.Fields = make([]*Field, 0)
 	for i := range elemType.NumField() {
-		f := NewField(elemType.Field(i))
-		if !f.Tags.IsProtobuf() {
+		f := newField(elemType.Field(i))
+		if !f.Tags.isProtobuf() {
 			continue
 		}
 		out.Fields = append(out.Fields, f)
@@ -86,7 +86,7 @@ func RegisterType(t reflect.Type) *Type {
 	return out
 }
 
-func NewField(f reflect.StructField) *Field {
+func newField(f reflect.StructField) *Field {
 	out := new(Field)
 	out.Name = f.Name
 	out.Kind = f.Type.Kind()
@@ -96,26 +96,26 @@ func NewField(f reflect.StructField) *Field {
 		out.Kind = f.Type.Elem().Kind()
 	}
 	out.Index = f.Index
-	out.Tags = NewTags(f.Tag)
+	out.Tags = newTags(f.Tag)
 	return out
 }
 
-func NewTags(t reflect.StructTag) *Tags {
+func newTags(t reflect.StructTag) *Tags {
 	out := new(Tags)
 	if tag, ok := t.Lookup("protobuf"); ok {
-		out.Protobuf = ParseProtoTag(tag)
+		out.Protobuf = parseProtoTag(tag)
 	}
 	if tag, ok := t.Lookup("protobuf_key"); ok {
-		out.MapKey = ParseProtoTag(tag).WireType
+		out.MapKey = parseProtoTag(tag).WireType
 	}
 	if tag, ok := t.Lookup("protobuf_val"); ok {
-		out.MapValue = ParseProtoTag(tag).WireType
+		out.MapValue = parseProtoTag(tag).WireType
 	}
 	out.JsonName = t.Get("json")
 	return out
 }
 
-func GetWireType(str string) WireType {
+func getWireType(str string) WireType {
 	switch str {
 	case "varint":
 		{
@@ -145,8 +145,7 @@ func GetWireType(str string) WireType {
 	return 0
 }
 
-func ParseProtoTag(tag string) *ProtobufInfo {
-	// Handle different protobuf tag formats
+func parseProtoTag(tag string) *ProtobufInfo {
 	tag = strings.Trim(tag, "\"")
 	if strings.HasPrefix(tag, "protobuf:") {
 		tag = strings.TrimPrefix(tag, "protobuf:")
@@ -167,7 +166,7 @@ func ParseProtoTag(tag string) *ProtobufInfo {
 
 	out := new(ProtobufInfo)
 	if l > 0 {
-		out.WireType = GetWireType(segments[0])
+		out.WireType = getWireType(segments[0])
 	}
 	if l > 1 {
 		out.FieldNum = fieldNum
@@ -188,13 +187,6 @@ func ParseProtoTag(tag string) *ProtobufInfo {
 	return out
 }
 
-func GetKind(t reflect.Type) (reflect.Kind, bool) {
-	if t.Kind() == reflect.Pointer {
-		return t.Elem().Kind(), true
-	}
-	return t.Kind(), false
-}
-
-func (t *Tags) IsProtobuf() bool {
+func (t *Tags) isProtobuf() bool {
 	return t.Protobuf != nil
 }

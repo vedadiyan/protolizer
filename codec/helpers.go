@@ -25,7 +25,7 @@ func Marshal(v any) ([]byte, error) {
 	if reflected.Kind() == reflect.Pointer {
 		reflected = reflected.Elem()
 	}
-	typ := RegisterType(reflected.Type())
+	typ := CaptureType(reflected.Type())
 	out := make([]byte, 0)
 	for _, i := range typ.Fields {
 		var opts []CodecOption
@@ -199,7 +199,7 @@ func Unmarshal(bytes []byte, v any) error {
 	if reflected.Kind() == reflect.Pointer {
 		reflected = reflected.Elem()
 	}
-	typ := RegisterType(reflected.Type())
+	typ := CaptureType(reflected.Type())
 	pos := 0
 	for pos < len(bytes) {
 		fieldNum, wireType, consumed, err := decodeTag(bytes, pos)

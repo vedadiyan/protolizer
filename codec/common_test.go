@@ -42,7 +42,7 @@ func TestSoFar(t *testing.T) {
 	u.Int32S = append(u.Int32S, 1)
 	u.Int32S = append(u.Int32S, 100)
 	u.Int32S = append(u.Int32S, 1000)
-	_ = RegisterType(reflect.TypeOf(new(users.General)))
+	_ = CaptureType(reflect.TypeOf(new(users.General)))
 
 	data, err := Marshal(u)
 	if err != nil {
