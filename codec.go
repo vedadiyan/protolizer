@@ -6,15 +6,15 @@ import (
 )
 
 type (
-	CodecOptions struct {
+	codecOptions struct {
 		MapKeyWireType   WireType
 		MapValueWireType WireType
 	}
-	CodecOption func(*CodecOptions)
+	codecOption func(*codecOptions)
 )
 
-func withMapWireTypes(key WireType, value WireType) CodecOption {
-	return func(eo *CodecOptions) {
+func withMapWireTypes(key WireType, value WireType) codecOption {
+	return func(eo *codecOptions) {
 		eo.MapKeyWireType = key
 		eo.MapValueWireType = value
 	}
@@ -28,7 +28,7 @@ func Marshal(v any) ([]byte, error) {
 	typ := CaptureType(reflected.Type())
 	out := make([]byte, 0)
 	for _, i := range typ.Fields {
-		var opts []CodecOption
+		var opts []codecOption
 		v := reflected.FieldByIndex(i.Index)
 		if v.Kind() == reflect.Map {
 			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
@@ -56,7 +56,7 @@ func Marshal(v any) ([]byte, error) {
 	return out, nil
 }
 
-func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
+func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...codecOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -138,7 +138,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 		}
 	case reflect.Map:
 		{
-			encodeOptions := new(CodecOptions)
+			encodeOptions := new(codecOptions)
 			for _, opt := range opts {
 				opt(encodeOptions)
 			}
@@ -203,7 +203,7 @@ func Unmarshal(bytes []byte, v any) error {
 		for _, i := range typ.Fields {
 			if i.Tags.Protobuf.FieldNum == int(fieldNum) {
 				v := reflected.FieldByIndex(i.Index)
-				var opts []CodecOption
+				var opts []codecOption
 				if v.Kind() == reflect.Map {
 					opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
 				}
@@ -219,7 +219,7 @@ func Unmarshal(bytes []byte, v any) error {
 	return nil
 }
 
-func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...CodecOption) (int, error) {
+func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...codecOption) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
