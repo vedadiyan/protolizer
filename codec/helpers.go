@@ -299,7 +299,6 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			valueType := v.Type().Elem()
 			v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 
-			_ = valueType
 			_pos := 0
 			for _pos < len(value) {
 				_, keyWireType, consumed, err := DecodeTag(value, _pos)
