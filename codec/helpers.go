@@ -291,7 +291,45 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 		}
 	case reflect.Map:
 		{
+			value, consumed, err := DecodeBytes(bytes, pos)
+			if err != nil {
+				return pos, err
+			}
+			keyType := v.Type().Key()
+			valueType := v.Type().Elem()
+			v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 
+			_ = valueType
+			_pos := 0
+			for _pos < len(value) {
+				_, keyWireType, consumed, err := DecodeTag(value, _pos)
+				if err != nil {
+					return pos, err
+				}
+				_pos += consumed
+				_key := reflect.New(keyType).Elem()
+				consumed, err = RawDecode(_key, _key.Kind(), value, keyWireType, _pos)
+				if err != nil {
+					return pos, err
+				}
+				_pos = consumed
+				test := _key.Int()
+				_ = test
+
+				_, valueWireType, consumed, err := DecodeTag(value, _pos)
+				if err != nil {
+					return pos, err
+				}
+				_pos += consumed
+				_value := reflect.New(valueType).Elem()
+				consumed, err = RawDecode(_value, _value.Kind(), value, valueWireType, _pos)
+				if err != nil {
+					return pos, err
+				}
+				_pos = consumed
+				v.SetMapIndex(_key, _value)
+			}
+			return pos + consumed, nil
 		}
 	case reflect.Struct:
 		{
