@@ -33,35 +33,27 @@ func Marshal(v any) ([]byte, error) {
 		if v.Kind() == reflect.Map {
 			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
 		}
-		bytes, err := encode(v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
+		w := i.Tags.Protobuf.WireType
+		if i.Kind == reflect.Slice {
+			w = WireTypeLen
+		}
+		tag, err := encodeTag(int32(i.Tags.Protobuf.FieldNum), w)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, bytes...)
+		if v.IsZero() {
+			continue
+		}
+		if v.Kind() == reflect.Pointer {
+			v = v.Elem()
+		}
+		bytes, err := encodeRaw(v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, append(tag, bytes...)...)
 	}
 	return out, nil
-}
-
-func encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
-	w := wireType
-	if kind == reflect.Slice {
-		w = WireTypeLen
-	}
-	tag, err := encodeTag(int32(fieldNumber), w)
-	if err != nil {
-		return nil, err
-	}
-	if v.IsZero() {
-		return nil, nil
-	}
-	if v.Kind() == reflect.Pointer {
-		v = v.Elem()
-	}
-	bytes, err := encodeRaw(v, kind, fieldNumber, wireType, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return append(tag, bytes...), nil
 }
 
 func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
@@ -191,7 +183,7 @@ func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 			return Marshal(v.Interface())
 		}
 	}
-	return nil, fmt.Errorf("")
+	return nil, fmt.Errorf("unexpected type %v", kind)
 }
 
 func Unmarshal(bytes []byte, v any) error {
@@ -225,18 +217,6 @@ func Unmarshal(bytes []byte, v any) error {
 		}
 	}
 	return nil
-}
-
-func decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes []byte, pos int, opts ...CodecOption) (int, error) {
-	fieldNum, wireType, consumed, err := decodeTag(bytes, pos)
-	if err != nil {
-		return pos, err
-	}
-	if fieldNum != int32(expectedFieldNumber) {
-		return 0, nil
-	}
-	return decodeRaw(v, kind, bytes, wireType, pos+consumed, opts...)
-
 }
 
 func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...CodecOption) (int, error) {
@@ -446,5 +426,5 @@ func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			return c, nil
 		}
 	}
-	return pos, fmt.Errorf("")
+	return pos, fmt.Errorf("unexpected type %v", kind)
 }
