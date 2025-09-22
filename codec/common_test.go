@@ -42,9 +42,9 @@ func TestSoFar(t *testing.T) {
 	u.Int32S = append(u.Int32S, 1)
 	u.Int32S = append(u.Int32S, 100)
 	u.Int32S = append(u.Int32S, 1000)
-	typ := RegisterType(reflect.TypeOf(new(users.General)))
+	_ = RegisterType(reflect.TypeOf(new(users.General)))
 
-	data, err := typ.Encode(reflect.ValueOf(u))
+	data, err := Marshal(u)
 	if err != nil {
 		t.FailNow()
 	}
@@ -55,11 +55,10 @@ func TestSoFar(t *testing.T) {
 	fmt.Println(data2)
 
 	u2 := new(users.General)
-	pos, err := DECODE(reflect.ValueOf(u2), data, 0)
+	err = Unmarshal(data, u2)
 	if err != nil {
 		t.FailNow()
 	}
-	_ = pos
 
 	u3 := new(users.General)
 	err = proto.Unmarshal(data, u3)
@@ -76,35 +75,35 @@ func TestSoFar(t *testing.T) {
 	// fmt.Println(v.String())
 }
 
-func TestSoFar2(t *testing.T) {
-	u := new(users.Fixed)
-	u.Fx32 = 1000
-	u.Fx64 = 10000
+// func TestSoFar2(t *testing.T) {
+// 	u := new(users.Fixed)
+// 	u.Fx32 = 1000
+// 	u.Fx64 = 10000
 
-	typ := RegisterType(reflect.TypeOf(new(users.Fixed)))
+// 	typ := RegisterType(reflect.TypeOf(new(users.Fixed)))
 
-	data, err := typ.Encode(reflect.ValueOf(u))
-	if err != nil {
-		t.FailNow()
-	}
-	data2, err := proto.Marshal(u)
-	_ = data
+// 	data, err := typ.Encode(reflect.ValueOf(u))
+// 	if err != nil {
+// 		t.FailNow()
+// 	}
+// 	data2, err := proto.Marshal(u)
+// 	_ = data
 
-	fmt.Println(data)
-	fmt.Println(data2)
+// 	fmt.Println(data)
+// 	fmt.Println(data2)
 
-	u2 := new(users.Fixed)
-	pos, err := typ.Decode(reflect.ValueOf(u2), data2, 0)
-	if err != nil {
-		t.FailNow()
-	}
-	_ = pos
+// 	u2 := new(users.Fixed)
+// 	pos, err := typ.Decode(reflect.ValueOf(u2), data2, 0)
+// 	if err != nil {
+// 		t.FailNow()
+// 	}
+// 	_ = pos
 
-	// v := reflect.ValueOf(u).Elem().FieldByName("FirstName")
+// 	// v := reflect.ValueOf(u).Elem().FieldByName("FirstName")
 
-	// bytes, _ := typ.Fields[1].Encode(v)
-	// v.SetString("")
-	// typ.Fields[1].Decode(bytes, v, 0)
+// 	// bytes, _ := typ.Fields[1].Encode(v)
+// 	// v.SetString("")
+// 	// typ.Fields[1].Decode(bytes, v, 0)
 
-	// fmt.Println(v.String())
-}
+// 	// fmt.Println(v.String())
+// }

@@ -86,20 +86,6 @@ func RegisterType(t reflect.Type) *Type {
 	return out
 }
 
-func (t *Type) Encode(v reflect.Value) ([]byte, error) {
-	if v.IsZero() {
-		return nil, nil
-	}
-	if v.Kind() == reflect.Pointer {
-		v = v.Elem()
-	}
-	return RawEncode(v, reflect.Struct, 1, WireTypeLen)
-}
-
-func (t *Type) Decode(v reflect.Value, bytes []byte, pos int) (int, error) {
-	return RawDecode(v, reflect.Struct, bytes, WireTypeLen, pos)
-}
-
 func NewField(f reflect.StructField) *Field {
 	out := new(Field)
 	out.Name = f.Name
@@ -112,18 +98,6 @@ func NewField(f reflect.StructField) *Field {
 	out.Index = f.Index
 	out.Tags = NewTags(f.Tag)
 	return out
-}
-
-func (f *Field) Encode(v reflect.Value) ([]byte, error) {
-	var opts []CodecOption
-	if f.Kind == reflect.Map {
-		opts = append(opts, WithMapWireTypes(f.Tags.MapKey, f.Tags.MapValue))
-	}
-	return Encode(v, f.Kind, f.Tags.Protobuf.FieldNum, f.Tags.Protobuf.WireType, opts...)
-}
-
-func (f *Field) Decode(b []byte, v reflect.Value, pos int) (int, error) {
-	return Decode(v, f.Tags.Protobuf.FieldNum, f.Kind, b, pos)
 }
 
 func NewTags(t reflect.StructTag) *Tags {

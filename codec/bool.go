@@ -1,14 +1,14 @@
 package codec
 
-func EncodeBool(value bool) []byte {
+func encodeBool(value bool) []byte {
 	if value {
-		return EncodeVarint(1)
+		return encodeVarint(1)
 	}
-	return EncodeVarint(0)
+	return encodeVarint(0)
 }
 
-func DecodeBool(data []byte, offset int) (bool, int, error) {
-	value, consumed, err := DecodeVarint(data, offset)
+func decodeBool(data []byte, offset int) (bool, int, error) {
+	value, consumed, err := decodeVarint(data, offset)
 	if err != nil {
 		return false, 0, err
 	}

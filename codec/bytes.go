@@ -2,22 +2,17 @@ package codec
 
 import "fmt"
 
-func EncodeBytes(value []byte) []byte {
-	length := EncodeVarint(int64(len(value)))
+func encodeBytes(value []byte) []byte {
+	length := encodeVarint(int64(len(value)))
 	return append(length, value...)
 }
 
-func EncodeBytesLongForm(value []byte, extraBytes int) []byte {
-	length := EncodeVarintLongForm(int64(len(value)), extraBytes)
-	return append(length, value...)
+func encodeString(value string) []byte {
+	return encodeBytes([]byte(value))
 }
 
-func EncodeString(value string) []byte {
-	return EncodeBytes([]byte(value))
-}
-
-func DecodeBytes(data []byte, offset int) ([]byte, int, error) {
-	length, lengthSize, err := DecodeVarint(data, offset)
+func decodeBytes(data []byte, offset int) ([]byte, int, error) {
+	length, lengthSize, err := decodeVarint(data, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -38,18 +33,10 @@ func DecodeBytes(data []byte, offset int) ([]byte, int, error) {
 	return value, lengthSize + int(length), nil
 }
 
-func DecodeString(data []byte, offset int) (string, int, error) {
-	bytes, consumed, err := DecodeBytes(data, offset)
+func decodeString(data []byte, offset int) (string, int, error) {
+	bytes, consumed, err := decodeBytes(data, offset)
 	if err != nil {
 		return "", 0, err
 	}
 	return string(bytes), consumed, nil
-}
-
-func BytesWireType() WireType {
-	return WireTypeLen
-}
-
-func StringWireType() WireType {
-	return WireTypeLen
 }

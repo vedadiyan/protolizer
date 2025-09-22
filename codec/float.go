@@ -6,21 +6,21 @@ import (
 	"math"
 )
 
-func EncodeFloat32(value float32) []byte {
+func encodeFloat32(value float32) []byte {
 	buf := make([]byte, 4)
 	bits := math.Float32bits(value)
 	binary.LittleEndian.PutUint32(buf, bits)
 	return buf
 }
 
-func EncodeFloat64(value float64) []byte {
+func encodeFloat64(value float64) []byte {
 	buf := make([]byte, 8)
 	bits := math.Float64bits(value)
 	binary.LittleEndian.PutUint64(buf, bits)
 	return buf
 }
 
-func DecodeFloat32(data []byte, offset int) (float32, int, error) {
+func decodeFloat32(data []byte, offset int) (float32, int, error) {
 	if len(data) < offset+4 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float32")
 	}
@@ -29,7 +29,7 @@ func DecodeFloat32(data []byte, offset int) (float32, int, error) {
 	return value, 4, nil
 }
 
-func DecodeFloat64(data []byte, offset int) (float64, int, error) {
+func decodeFloat64(data []byte, offset int) (float64, int, error) {
 	if len(data) < offset+8 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float64")
 	}
