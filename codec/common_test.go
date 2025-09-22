@@ -2,7 +2,6 @@ package codec
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	users "github.com/vedadiyan/protolizer/test"
@@ -42,7 +41,6 @@ func TestSoFar(t *testing.T) {
 	u.Int32S = append(u.Int32S, 1)
 	u.Int32S = append(u.Int32S, 100)
 	u.Int32S = append(u.Int32S, 1000)
-	_ = CaptureType(reflect.TypeOf(new(users.General)))
 
 	data, err := Marshal(u)
 	if err != nil {
