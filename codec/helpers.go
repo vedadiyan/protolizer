@@ -5,6 +5,21 @@ import (
 	"reflect"
 )
 
+type (
+	EncodeOptions struct {
+		MapKeyWireType   WireType
+		MapValueWireType WireType
+	}
+	EncodeOption func(*EncodeOptions)
+)
+
+func WithMapWireTypes(key WireType, value WireType) EncodeOption {
+	return func(eo *EncodeOptions) {
+		eo.MapKeyWireType = key
+		eo.MapValueWireType = value
+	}
+}
+
 func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 	tagBytes, err := EncodeTag(n, wireType)
 	if err != nil {
@@ -13,7 +28,7 @@ func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 	return append(tagBytes, v...), nil
 }
 
-func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType) ([]byte, error) {
+func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...EncodeOption) ([]byte, error) {
 	tag, err := EncodeTag(int32(fieldNumber), wireType)
 	if err != nil {
 		return nil, err
@@ -24,14 +39,14 @@ func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireTy
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
-	bytes, err := RawEncode(v, kind, fieldNumber, wireType)
+	bytes, err := RawEncode(v, kind, fieldNumber, wireType, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return append(tag, bytes...), nil
 }
 
-func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType) ([]byte, error) {
+func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...EncodeOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -92,24 +107,28 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 		}
 	case reflect.Map:
 		{
+			encodeOptions := new(EncodeOptions)
+			for _, opt := range opts {
+				opt(encodeOptions)
+			}
 			var data []byte
 			mapRange := v.MapRange()
 			for mapRange.Next() {
 				key := mapRange.Key()
-				keyTag, err := EncodeTag(1, WireTypeVarint)
+				keyTag, err := EncodeTag(1, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
 				}
-				keyBytes, err := RawEncode(key, key.Kind(), fieldNumber, WireTypeVarint)
+				keyBytes, err := RawEncode(key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
 				}
 				value := mapRange.Value()
-				valueTag, err := EncodeTag(2, WireTypeLen)
+				valueTag, err := EncodeTag(2, encodeOptions.MapValueWireType)
 				if err != nil {
 					return nil, err
 				}
-				valueBytes, err := RawEncode(value, value.Kind(), fieldNumber, WireTypeLen)
+				valueBytes, err := RawEncode(value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
 				if err != nil {
 					return nil, err
 				}

@@ -17,8 +17,8 @@ type (
 	Tags struct {
 		Protobuf *ProtobufInfo
 		JsonName string
-		MapKey   string
-		MapValue string
+		MapKey   WireType
+		MapValue WireType
 	}
 	ProtobufInfo struct {
 		WireType WireType
@@ -115,7 +115,11 @@ func NewField(f reflect.StructField) *Field {
 }
 
 func (f *Field) Encode(v reflect.Value) ([]byte, error) {
-	return Encode(v, f.Kind, f.Tags.Protobuf.FieldNum, f.Tags.Protobuf.WireType)
+	var opts []EncodeOption
+	if f.Kind == reflect.Map {
+		opts = append(opts, WithMapWireTypes(f.Tags.MapKey, f.Tags.MapValue))
+	}
+	return Encode(v, f.Kind, f.Tags.Protobuf.FieldNum, f.Tags.Protobuf.WireType, opts...)
 }
 
 func (f *Field) Decode(b []byte, v reflect.Value, pos int) (int, error) {
@@ -126,6 +130,12 @@ func NewTags(t reflect.StructTag) *Tags {
 	out := new(Tags)
 	if tag, ok := t.Lookup("protobuf"); ok {
 		out.Protobuf = ParseProtoTag(tag)
+	}
+	if tag, ok := t.Lookup("protobuf_key"); ok {
+		out.MapKey = ParseProtoTag(tag).WireType
+	}
+	if tag, ok := t.Lookup("protobuf_val"); ok {
+		out.MapValue = ParseProtoTag(tag).WireType
 	}
 	out.JsonName = t.Get("json")
 	return out
