@@ -47,7 +47,7 @@ func Marshal(v any) ([]byte, error) {
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
-		bytes, err := encodeRaw(v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
+		bytes, err := encodeValue(v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func Marshal(v any) ([]byte, error) {
 	return out, nil
 }
 
-func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
+func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -106,7 +106,7 @@ func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				{
 					for i := 0; i < v.Len(); i++ {
 						v := v.Index(i)
-						bytes, err := encodeRaw(v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(v, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -125,7 +125,7 @@ func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 							data = append(data, tag...)
 						}
 						v := v.Index(i)
-						bytes, err := encodeRaw(v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(v, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -157,7 +157,7 @@ func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				if err != nil {
 					return nil, err
 				}
-				keyBytes, err := encodeRaw(key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
+				keyBytes, err := encodeValue(key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
 				}
@@ -166,7 +166,7 @@ func encodeRaw(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				if err != nil {
 					return nil, err
 				}
-				valueBytes, err := encodeRaw(value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
+				valueBytes, err := encodeValue(value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
 				if err != nil {
 					return nil, err
 				}
@@ -207,7 +207,7 @@ func Unmarshal(bytes []byte, v any) error {
 				if v.Kind() == reflect.Map {
 					opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
 				}
-				consumed, err := decodeRaw(v, i.Kind, bytes, i.Tags.Protobuf.WireType, pos, opts...)
+				consumed, err := decodeValue(v, i.Kind, bytes, i.Tags.Protobuf.WireType, pos, opts...)
 				if err != nil {
 					return err
 				}
@@ -219,7 +219,7 @@ func Unmarshal(bytes []byte, v any) error {
 	return nil
 }
 
-func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...CodecOption) (int, error) {
+func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...CodecOption) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -356,7 +356,7 @@ func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 					}
 					_pos := 0
 					for _pos < len(value) {
-						consumed, err := decodeRaw(_v, _v.Kind(), value, wireType, _pos)
+						consumed, err := decodeValue(_v, _v.Kind(), value, wireType, _pos)
 						if err != nil {
 							return pos, err
 						}
@@ -367,7 +367,7 @@ func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 				}
 			default:
 				{
-					consumed, err := decodeRaw(_v, _v.Kind(), bytes, wireType, pos)
+					consumed, err := decodeValue(_v, _v.Kind(), bytes, wireType, pos)
 					if err != nil {
 						return pos, err
 					}
@@ -394,7 +394,7 @@ func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			}
 			_pos += consumed
 			_key := reflect.New(keyType).Elem()
-			consumed, err = decodeRaw(_key, _key.Kind(), value, keyWireType, _pos)
+			consumed, err = decodeValue(_key, _key.Kind(), value, keyWireType, _pos)
 			if err != nil {
 				return pos, err
 			}
@@ -406,7 +406,7 @@ func decodeRaw(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			}
 			_pos += consumed
 			_value := reflect.New(valueType).Elem()
-			_, err = decodeRaw(_value, _value.Kind(), value, valueWireType, _pos)
+			_, err = decodeValue(_value, _value.Kind(), value, valueWireType, _pos)
 			if err != nil {
 				return pos, err
 			}
