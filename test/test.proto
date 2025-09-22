@@ -23,6 +23,7 @@ message General {
     sfixed64 sfixed64 = 14;
     map<int32, string> map = 15;
     repeated string strs = 16;
+    repeated int32 int32s = 17;
 }
 
 message Fixed {

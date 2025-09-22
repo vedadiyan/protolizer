@@ -29,7 +29,11 @@ func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 }
 
 func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
-	tag, err := EncodeTag(int32(fieldNumber), wireType)
+	w := wireType
+	if kind == reflect.Slice {
+		w = WireTypeLen
+	}
+	tag, err := EncodeTag(int32(fieldNumber), w)
 	if err != nil {
 		return nil, err
 	}
@@ -91,22 +95,40 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				return EncodeBytes(v.Bytes()), nil
 			}
 			var data []byte
-			for i := 0; i < v.Len(); i++ {
-				if len(data) != 0 {
-					tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
-					if err != nil {
-						return nil, err
+			switch wireType {
+			case WireTypeVarint, WireTypeI32, WireTypeI64:
+				{
+					for i := 0; i < v.Len(); i++ {
+						v := v.Index(i)
+						bytes, err := RawEncode(v, v.Kind(), fieldNumber, wireType)
+						if err != nil {
+							return nil, err
+						}
+						data = append(data, bytes...)
 					}
-					data = append(data, tag...)
+					return EncodeBytes(data), nil
 				}
-				v := v.Index(i)
-				bytes, err := RawEncode(v, v.Kind(), fieldNumber, wireType)
-				if err != nil {
-					return nil, err
+			default:
+				{
+					for i := 0; i < v.Len(); i++ {
+						if len(data) != 0 {
+							tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
+							if err != nil {
+								return nil, err
+							}
+							data = append(data, tag...)
+						}
+						v := v.Index(i)
+						bytes, err := RawEncode(v, v.Kind(), fieldNumber, wireType)
+						if err != nil {
+							return nil, err
+						}
+						data = append(data, bytes...)
+					}
+					return data, nil
 				}
-				data = append(data, bytes...)
 			}
-			return data, nil
+
 		}
 	case reflect.Map:
 		{
@@ -177,11 +199,12 @@ func DECODE(v reflect.Value, bytes []byte, pos int, opts ...CodecOption) (int, e
 		if err != nil {
 			return pos, err
 		}
+		_ = wireType
 		pos += consumed
 		for _, i := range typ.Fields {
 			if i.Tags.Protobuf.FieldNum == int(fieldNum) {
 				v := v.FieldByIndex(i.Index)
-				consumed, err := RawDecode(v, i.Kind, bytes, wireType, pos, opts...)
+				consumed, err := RawDecode(v, i.Kind, bytes, i.Tags.Protobuf.WireType, pos, opts...)
 				if err != nil {
 					return pos, err
 				}
@@ -333,12 +356,34 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 			}
 			_v := reflect.New(v.Type().Elem())
 			_v = _v.Elem()
-			consumed, err := RawDecode(_v, _v.Kind(), bytes, wireType, pos)
-			if err != nil {
-				return pos, err
+			switch wireType {
+			case WireTypeVarint, WireTypeI32, WireTypeI64:
+				{
+					value, consumed, err := DecodeBytes(bytes, pos)
+					if err != nil {
+						return pos, err
+					}
+					_pos := 0
+					for _pos < len(value) {
+						consumed, err := RawDecode(_v, _v.Kind(), value, wireType, _pos)
+						if err != nil {
+							return pos, err
+						}
+						_pos = consumed
+						v.Set(reflect.Append(v, _v))
+					}
+					return pos + consumed, nil
+				}
+			default:
+				{
+					consumed, err := RawDecode(_v, _v.Kind(), bytes, wireType, pos)
+					if err != nil {
+						return pos, err
+					}
+					v.Set(reflect.Append(v, _v))
+					return consumed, nil
+				}
 			}
-			v.Set(reflect.Append(v, _v))
-			return consumed, nil
 		}
 	case reflect.Map:
 		{

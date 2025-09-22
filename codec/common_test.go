@@ -37,6 +37,11 @@ func TestSoFar(t *testing.T) {
 	u.Strs = make([]string, 0)
 	u.Strs = append(u.Strs, "Hello")
 	u.Strs = append(u.Strs, "Hello2")
+	u.Int32S = make([]int32, 0)
+	u.Int32S = append(u.Int32S, 1)
+	u.Int32S = append(u.Int32S, 1)
+	u.Int32S = append(u.Int32S, 100)
+	u.Int32S = append(u.Int32S, 1000)
 	typ := RegisterType(reflect.TypeOf(new(users.General)))
 
 	data, err := typ.Encode(reflect.ValueOf(u))
@@ -50,7 +55,7 @@ func TestSoFar(t *testing.T) {
 	fmt.Println(data2)
 
 	u2 := new(users.General)
-	pos, err := DECODE(reflect.ValueOf(u2), data2, 0)
+	pos, err := DECODE(reflect.ValueOf(u2), data, 0)
 	if err != nil {
 		t.FailNow()
 	}
