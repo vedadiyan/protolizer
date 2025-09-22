@@ -7,13 +7,13 @@ import (
 
 type (
 	encodeOptions struct {
-		MapKeyWireType   wireType
-		MapValueWireType wireType
+		MapKeyWireType   WireType
+		MapValueWireType WireType
 	}
 	encodeOption func(*encodeOptions)
 )
 
-func withMapWireTypes(key wireType, value wireType) encodeOption {
+func withMapWireTypes(key WireType, value WireType) encodeOption {
 	return func(eo *encodeOptions) {
 		eo.MapKeyWireType = key
 		eo.MapValueWireType = value
@@ -56,7 +56,7 @@ func Marshal(v any) ([]byte, error) {
 	return out, nil
 }
 
-func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType wireType, opts ...encodeOption) ([]byte, error) {
+func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -215,7 +215,7 @@ func Unmarshal(bytes []byte, v any) error {
 	return nil
 }
 
-func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType wireType, pos int) (int, error) {
+func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
