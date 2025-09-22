@@ -1,4 +1,4 @@
-package codec
+package protolizer
 
 func encodeBool(value bool) []byte {
 	if value {
