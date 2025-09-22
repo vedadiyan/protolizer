@@ -92,6 +92,13 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 			}
 			var data []byte
 			for i := 0; i < v.Len(); i++ {
+				if len(data) != 0 {
+					tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
+					if err != nil {
+						return nil, err
+					}
+					data = append(data, tag...)
+				}
 				v := v.Index(i)
 				bytes, err := RawEncode(v, v.Kind(), fieldNumber, wireType)
 				if err != nil {
@@ -110,6 +117,13 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 			var data []byte
 			mapRange := v.MapRange()
 			for mapRange.Next() {
+				if len(data) != 0 {
+					tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
+					if err != nil {
+						return nil, err
+					}
+					data = append(data, tag...)
+				}
 				key := mapRange.Key()
 				keyTag, err := EncodeTag(1, encodeOptions.MapKeyWireType)
 				if err != nil {
@@ -132,13 +146,6 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				keyEntry := append(keyTag, keyBytes...)
 				valueEntry := append(valueTag, valueBytes...)
 				entry := EncodeBytes(append(keyEntry, valueEntry...))
-				if len(data) != 0 {
-					tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
-					if err != nil {
-						return nil, err
-					}
-					data = append(data, tag...)
-				}
 				data = append(data, entry...)
 			}
 			return data, nil
@@ -321,6 +328,17 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 				v.SetBytes(value)
 				return pos + consumed, nil
 			}
+			if v.IsZero() {
+				v.Set(reflect.MakeSlice(v.Type(), 0, 0))
+			}
+			_v := reflect.New(v.Type().Elem())
+			_v = _v.Elem()
+			consumed, err := RawDecode(_v, _v.Kind(), bytes, wireType, pos)
+			if err != nil {
+				return pos, err
+			}
+			v.Set(reflect.Append(v, _v))
+			return consumed, nil
 		}
 	case reflect.Map:
 		{
