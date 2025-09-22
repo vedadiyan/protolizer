@@ -313,8 +313,6 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 					return pos, err
 				}
 				_pos = consumed
-				test := _key.Int()
-				_ = test
 
 				_, valueWireType, consumed, err := DecodeTag(value, _pos)
 				if err != nil {
