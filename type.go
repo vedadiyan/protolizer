@@ -10,11 +10,8 @@ import (
 )
 
 type (
-	WireType     uint8
-	Serializable struct {
-		Value any
-	}
-	Tags struct {
+	WireType uint8
+	Tags     struct {
 		Protobuf *ProtobufInfo
 		JsonName string
 		MapKey   WireType

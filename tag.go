@@ -2,7 +2,7 @@ package protolizer
 
 import "fmt"
 
-func encodeTag(fieldNumber int32, wireType WireType) ([]byte, error) {
+func encodeTag(fieldNumber int32, wireType wireType) ([]byte, error) {
 	if fieldNumber < 1 {
 		return nil, fmt.Errorf("field number must be positive")
 	}
@@ -14,14 +14,14 @@ func encodeTag(fieldNumber int32, wireType WireType) ([]byte, error) {
 	return encodeVarint(tag), nil
 }
 
-func decodeTag(data []byte, offset int) (int32, WireType, int, error) {
+func decodeTag(data []byte, offset int) (int32, wireType, int, error) {
 	tag, consumed, err := decodeVarint(data, offset)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
 	fieldNumber := int32(tag >> 3)
-	wireType := WireType(tag & 0x7)
+	wireType := wireType(tag & 0x7)
 
 	if fieldNumber < 1 {
 		return 0, 0, 0, fmt.Errorf("invalid field number")
