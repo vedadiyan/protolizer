@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type (
@@ -33,7 +32,8 @@ type (
 		Tags      *Tags
 	}
 	Type struct {
-		Fields []*Field
+		Fields        []*Field
+		FieldsIndexer map[int]*Field
 	}
 )
 
@@ -48,21 +48,16 @@ const (
 
 var (
 	_registry map[reflect.Type]*Type
-	_mut      sync.Mutex
 )
 
 func init() {
 	_registry = make(map[reflect.Type]*Type)
 }
 
-func CaptureType(t reflect.Type) *Type {
-	_mut.Lock()
-	defer _mut.Unlock()
-	if value, ok := _registry[t]; ok {
-		return value
-	}
+func RegisterTypeFor[T any]() {
 	out := new(Type)
 
+	t := reflect.TypeFor[T]()
 	elemType := t
 	if t.Kind() == reflect.Ptr {
 		elemType = t.Elem()
@@ -79,8 +74,21 @@ func CaptureType(t reflect.Type) *Type {
 	sort.Slice(out.Fields, func(i, j int) bool {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
 	})
+
+	out.FieldsIndexer = make(map[int]*Field)
+	for _, i := range out.Fields {
+		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
+	}
+
 	_registry[t] = out
-	return out
+}
+
+func CaptureTypeFor[T any]() *Type {
+	return _registry[reflect.TypeFor[T]()]
+}
+
+func CaptureType(t reflect.Type) *Type {
+	return _registry[t]
 }
 
 func newField(f reflect.StructField) *Field {

@@ -194,23 +194,21 @@ func Unmarshal(bytes []byte, v any) error {
 	typ := CaptureType(reflected.Type())
 	pos := 0
 	for pos < len(bytes) {
-		fieldNum, wireType, consumed, err := decodeTag(bytes, pos)
+		fieldNum, _, consumed, err := decodeTag(bytes, pos)
 		if err != nil {
 			return err
 		}
-		_ = wireType
 		pos += consumed
-		for _, i := range typ.Fields {
-			if i.Tags.Protobuf.FieldNum == int(fieldNum) {
-				v := reflected.FieldByIndex(i.Index)
-				consumed, err := decodeValue(v, i.Kind, bytes, i.Tags.Protobuf.WireType, pos)
-				if err != nil {
-					return err
-				}
-				pos = consumed
-				break
-			}
+		field, ok := typ.FieldsIndexer[int(fieldNum)]
+		if !ok {
+			continue
 		}
+		v := reflected.FieldByIndex(field.Index)
+		consumed, err = decodeValue(v, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
+		if err != nil {
+			return err
+		}
+		pos = consumed
 	}
 	return nil
 }
