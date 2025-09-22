@@ -93,15 +93,11 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 			var data []byte
 			for i := 0; i < v.Len(); i++ {
 				v := v.Index(i)
-				tag, err := EncodeTag(int32(fieldNumber), wireType)
-				if err != nil {
-					return nil, err
-				}
 				bytes, err := RawEncode(v, v.Kind(), fieldNumber, wireType)
 				if err != nil {
 					return nil, err
 				}
-				data = append(data, append(tag, bytes...)...)
+				data = append(data, bytes...)
 			}
 			return data, nil
 		}
@@ -132,9 +128,20 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 				if err != nil {
 					return nil, err
 				}
-				data = append(data, append(append(keyTag, keyBytes...), append(valueTag, valueBytes...)...)...)
+
+				keyEntry := append(keyTag, keyBytes...)
+				valueEntry := append(valueTag, valueBytes...)
+				entry := EncodeBytes(append(keyEntry, valueEntry...))
+				if len(data) != 0 {
+					tag, err := EncodeTag(int32(fieldNumber), WireTypeLen)
+					if err != nil {
+						return nil, err
+					}
+					data = append(data, tag...)
+				}
+				data = append(data, entry...)
 			}
-			return EncodeBytes(data), nil
+			return data, nil
 		}
 	case reflect.Struct:
 		{
@@ -151,6 +158,32 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 		}
 	}
 	return nil, fmt.Errorf("")
+}
+
+func DECODE(v reflect.Value, bytes []byte, pos int, opts ...CodecOption) (int, error) {
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	typ := RegisterType(v.Type())
+	for pos < len(bytes) {
+		fieldNum, wireType, consumed, err := DecodeTag(bytes, pos)
+		if err != nil {
+			return pos, err
+		}
+		pos += consumed
+		for _, i := range typ.Fields {
+			if i.Tags.Protobuf.FieldNum == int(fieldNum) {
+				v := v.FieldByIndex(i.Index)
+				consumed, err := RawDecode(v, i.Kind, bytes, wireType, pos, opts...)
+				if err != nil {
+					return pos, err
+				}
+				pos = consumed
+				break
+			}
+		}
+	}
+	return pos, nil
 }
 
 func Decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes []byte, pos int, opts ...CodecOption) (int, error) {
@@ -291,42 +324,40 @@ func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireTy
 		}
 	case reflect.Map:
 		{
-			value, consumed, err := DecodeBytes(bytes, pos)
+			value, c, err := DecodeBytes(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
 			keyType := v.Type().Key()
 			valueType := v.Type().Elem()
-			v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
-
-			_pos := 0
-			for _pos < len(value) {
-				_, keyWireType, consumed, err := DecodeTag(value, _pos)
-				if err != nil {
-					return pos, err
-				}
-				_pos += consumed
-				_key := reflect.New(keyType).Elem()
-				consumed, err = RawDecode(_key, _key.Kind(), value, keyWireType, _pos)
-				if err != nil {
-					return pos, err
-				}
-				_pos = consumed
-
-				_, valueWireType, consumed, err := DecodeTag(value, _pos)
-				if err != nil {
-					return pos, err
-				}
-				_pos += consumed
-				_value := reflect.New(valueType).Elem()
-				consumed, err = RawDecode(_value, _value.Kind(), value, valueWireType, _pos)
-				if err != nil {
-					return pos, err
-				}
-				_pos = consumed
-				v.SetMapIndex(_key, _value)
+			if v.IsZero() {
+				v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 			}
-			return pos + consumed, nil
+			_pos := 0
+			_, keyWireType, consumed, err := DecodeTag(value, _pos)
+			if err != nil {
+				return pos, err
+			}
+			_pos += consumed
+			_key := reflect.New(keyType).Elem()
+			consumed, err = RawDecode(_key, _key.Kind(), value, keyWireType, _pos)
+			if err != nil {
+				return pos, err
+			}
+			_pos = consumed
+
+			_, valueWireType, consumed, err := DecodeTag(value, _pos)
+			if err != nil {
+				return pos, err
+			}
+			_pos += consumed
+			_value := reflect.New(valueType).Elem()
+			_, err = RawDecode(_value, _value.Kind(), value, valueWireType, _pos)
+			if err != nil {
+				return pos, err
+			}
+			v.SetMapIndex(_key, _value)
+			return pos + c, nil
 		}
 	case reflect.Struct:
 		{

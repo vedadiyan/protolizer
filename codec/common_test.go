@@ -16,22 +16,26 @@ type User struct {
 
 func TestSoFar(t *testing.T) {
 	u := new(users.General)
-	u.Boolean = true
-	u.Bytes = []byte{1, 2, 3, 4, 5}
-	u.Dbl = 100
-	u.Enum = users.TestEnum_TEST
-	u.Flt = 200
-	// u.Fx32 = 1000
-	// u.Fx64 = 10000
-	u.I32 = 2
-	u.I64 = 1000000
-	u.Str = "ok"
-	u.Ui32 = 3900
-	u.Ui64 = 5678
-	u.Sfixed32 = 3
-	u.Sfixed64 = 5
+	// u.Boolean = true
+	// u.Bytes = []byte{1, 2, 3, 4, 5}
+	// u.Dbl = 100
+	// u.Enum = users.TestEnum_TEST
+	// u.Flt = 200
+	// // u.Fx32 = 1000
+	// // u.Fx64 = 10000
+	// u.I32 = 2
+	// u.I64 = 1000000
+	// u.Str = "ok"
+	// u.Ui32 = 3900
+	// u.Ui64 = 5678
+	// u.Sfixed32 = 3
+	// u.Sfixed64 = 5
 	u.Map = make(map[int32]string)
 	u.Map[1] = "Hello World"
+	u.Map[100] = "OK GOOD"
+	u.Map[500] = "OK GREAT"
+	// u.Strs = make([]string, 0)
+	// u.Strs = append(u.Strs, "Hello")
 	typ := RegisterType(reflect.TypeOf(new(users.General)))
 
 	data, err := typ.Encode(reflect.ValueOf(u))
@@ -45,7 +49,7 @@ func TestSoFar(t *testing.T) {
 	fmt.Println(data2)
 
 	u2 := new(users.General)
-	pos, err := typ.Decode(reflect.ValueOf(u2), data, 0)
+	pos, err := DECODE(reflect.ValueOf(u2), data, 0)
 	if err != nil {
 		t.FailNow()
 	}
