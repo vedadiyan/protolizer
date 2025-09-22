@@ -6,15 +6,15 @@ import (
 )
 
 type (
-	EncodeOptions struct {
+	CodecOptions struct {
 		MapKeyWireType   WireType
 		MapValueWireType WireType
 	}
-	EncodeOption func(*EncodeOptions)
+	CodecOption func(*CodecOptions)
 )
 
-func WithMapWireTypes(key WireType, value WireType) EncodeOption {
-	return func(eo *EncodeOptions) {
+func WithMapWireTypes(key WireType, value WireType) CodecOption {
+	return func(eo *CodecOptions) {
 		eo.MapKeyWireType = key
 		eo.MapValueWireType = value
 	}
@@ -28,7 +28,7 @@ func EncodeField(n int32, wireType WireType, v []byte) ([]byte, error) {
 	return append(tagBytes, v...), nil
 }
 
-func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...EncodeOption) ([]byte, error) {
+func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
 	tag, err := EncodeTag(int32(fieldNumber), wireType)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func Encode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireTy
 	return append(tag, bytes...), nil
 }
 
-func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...EncodeOption) ([]byte, error) {
+func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...CodecOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -107,7 +107,7 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 		}
 	case reflect.Map:
 		{
-			encodeOptions := new(EncodeOptions)
+			encodeOptions := new(CodecOptions)
 			for _, opt := range opts {
 				opt(encodeOptions)
 			}
@@ -153,7 +153,7 @@ func RawEncode(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType Wir
 	return nil, fmt.Errorf("")
 }
 
-func Decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes []byte, pos int) (int, error) {
+func Decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes []byte, pos int, opts ...CodecOption) (int, error) {
 	fieldNum, wireType, consumed, err := DecodeTag(bytes, pos)
 	if err != nil {
 		return pos, err
@@ -161,11 +161,11 @@ func Decode(v reflect.Value, expectedFieldNumber int, kind reflect.Kind, bytes [
 	if fieldNum != int32(expectedFieldNumber) {
 		return 0, nil
 	}
-	return RawDecode(v, kind, bytes, wireType, pos+consumed)
+	return RawDecode(v, kind, bytes, wireType, pos+consumed, opts...)
 
 }
 
-func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int) (int, error) {
+func RawDecode(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int, opts ...CodecOption) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{

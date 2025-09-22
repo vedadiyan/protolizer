@@ -115,7 +115,7 @@ func NewField(f reflect.StructField) *Field {
 }
 
 func (f *Field) Encode(v reflect.Value) ([]byte, error) {
-	var opts []EncodeOption
+	var opts []CodecOption
 	if f.Kind == reflect.Map {
 		opts = append(opts, WithMapWireTypes(f.Tags.MapKey, f.Tags.MapValue))
 	}
