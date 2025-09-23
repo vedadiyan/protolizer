@@ -192,10 +192,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 		}
 	case reflect.Struct:
 		{
-			// tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
-			// if err != nil {
-			// 	return nil, err
-			// }
+
 			data, err := Marshal(v.Interface())
 			if err != nil {
 				return nil, err
