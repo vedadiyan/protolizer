@@ -11,32 +11,35 @@ import (
 type (
 	WireType uint8
 	Tags     struct {
-		Protobuf *ProtobufInfo
-		JsonName string
-		MapKey   WireType
-		MapValue WireType
+		Protobuf *ProtobufInfo `protobuf:"bytes,1,opt,name=protobuf,proto3"`
+		JsonName string        `protobuf:"bytes,2,opt,name=json_name,proto3"`
+		MapKey   WireType      `protobuf:"varint,3,opt,name=map_key,proto3,enum"`
+		MapValue WireType      `protobuf:"varint,4,opt,name=map_value,proto3,enum"`
 	}
+
 	ProtobufInfo struct {
-		WireType WireType
-		FieldNum int
-		Label    string
-		Name     string
-		Syntax   string
-		OneOf    bool
+		WireType WireType `protobuf:"varint,1,opt,name=wire_type,proto3,enum"`
+		FieldNum int      `protobuf:"varint,2,opt,name=field_num,proto3"`
+		Label    string   `protobuf:"bytes,3,opt,name=label,proto3"`
+		Name     string   `protobuf:"bytes,4,opt,name=name,proto3"`
+		Syntax   string   `protobuf:"bytes,5,opt,name=syntax,proto3"`
+		OneOf    bool     `protobuf:"varint,6,opt,name=one_of,proto3"`
 	}
+
 	Field struct {
-		Name       string
-		Kind       reflect.Kind
-		Key        reflect.Kind
-		Index      reflect.Kind
-		FieldIndex []int
-		IsPointer  bool
-		TypeName   string
-		Tags       *Tags
+		Name       string       `protobuf:"bytes,1,opt,name=name,proto3"`
+		Kind       reflect.Kind `protobuf:"varint,2,opt,name=kind,proto3,enum"`
+		Key        reflect.Kind `protobuf:"varint,3,opt,name=key,proto3,enum"`
+		Index      reflect.Kind `protobuf:"varint,4,opt,name=index,proto3"`
+		FieldIndex []int        `protobuf:"varint,5,rep,packed,name=field_index,proto3"`
+		IsPointer  bool         `protobuf:"varint,6,opt,name=is_pointer,proto3"`
+		TypeName   string       `protobuf:"bytes,7,opt,name=type_name,proto3"`
+		Tags       *Tags        `protobuf:"bytes,8,opt,name=tags,proto3"`
 	}
+
 	Type struct {
-		Fields        []*Field
-		FieldsIndexer map[int]*Field
+		Fields        []*Field       `protobuf:"bytes,1,rep,name=fields,proto3"`
+		FieldsIndexer map[int]*Field `protobuf:"bytes,2,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 )
 
@@ -55,6 +58,10 @@ var (
 
 func init() {
 	_registry = make(map[string]*Type)
+	RegisterTypeFor[Tags]()
+	RegisterTypeFor[ProtobufInfo]()
+	RegisterTypeFor[Field]()
+	RegisterTypeFor[Type]()
 }
 
 func RegisterTypeFor[T any]() {
@@ -217,4 +224,17 @@ func parseProtoTag(tag string) *ProtobufInfo {
 
 func (t *Tags) isProtobuf() bool {
 	return t.Protobuf != nil
+}
+
+func ExportType[T any]() ([]byte, error) {
+	t := CaptureTypeFor[T]()
+	return Marshal(t)
+}
+
+func ImportType(bytes []byte) (*Type, error) {
+	t := new(Type)
+	if err := Unmarshal(bytes, t); err != nil {
+		return nil, err
+	}
+	return t, nil
 }

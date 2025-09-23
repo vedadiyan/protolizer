@@ -5,6 +5,7 @@ import (
 )
 
 func TestAll(t *testing.T) {
+
 	test := new(Test)
 	test.Id = 1
 	test.Name = "Hello"
@@ -16,6 +17,14 @@ func TestAll(t *testing.T) {
 	}
 
 	RegisterTypeFor[Test]()
+	xxz := CaptureTypeFor[Test]()
+
+	_ = xxz
+	xxx, err := ExportType[Test]()
+	_ = xxx
+
+	typ, err := ImportType(xxx)
+	_ = typ
 
 	bytes, err := Marshal(test)
 	if err != nil {
