@@ -681,7 +681,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 					innerPos := 0
 					out := make([]float64, 0)
 					for innerPos < len(value) {
-						value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index}, value, wireType, innerPos)
+						value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index, TypeName: field.IndexType}, value, wireType, innerPos)
 						if err != nil {
 							return nil, pos, err
 						}
@@ -692,7 +692,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 				}
 			default:
 				{
-					value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index}, bytes, wireType, pos)
+					value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index, TypeName: field.IndexType}, bytes, wireType, pos)
 					if err != nil {
 						return nil, pos, err
 					}
@@ -712,7 +712,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 				return nil, pos, err
 			}
 			innerPos += consumed
-			key, consumed, err := decodeValueAnonymous(&Field{Kind: field.Key}, value, keyWireType, innerPos)
+			key, consumed, err := decodeValueAnonymous(&Field{Kind: field.Key, TypeName: field.KeyType}, value, keyWireType, innerPos)
 			if err != nil {
 				return nil, pos, err
 			}
@@ -723,7 +723,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 				return nil, pos, err
 			}
 			innerPos += consumed
-			v, _, err := decodeValueAnonymous(&Field{Kind: field.Index}, value, valueWireType, innerPos)
+			v, _, err := decodeValueAnonymous(&Field{Kind: field.Index, TypeName: field.IndexType}, value, valueWireType, innerPos)
 			if err != nil {
 				return nil, pos, err
 			}

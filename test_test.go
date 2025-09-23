@@ -26,6 +26,9 @@ func TestAll(t *testing.T) {
 	typ, err := ImportType(xxx)
 	_ = typ
 
+	xxzzxxz, err := UnmarshalAnonymous("github.com/vedadiyan/protolizer.Type", xxx)
+
+	_ = xxzzxxz
 	bytes, err := Marshal(test)
 	if err != nil {
 		t.FailNow()

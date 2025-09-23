@@ -31,10 +31,12 @@ type (
 		Kind       reflect.Kind `protobuf:"varint,2,opt,name=kind,proto3,enum"`
 		Key        reflect.Kind `protobuf:"varint,3,opt,name=key,proto3,enum"`
 		Index      reflect.Kind `protobuf:"varint,4,opt,name=index,proto3"`
-		FieldIndex []int        `protobuf:"varint,5,rep,packed,name=field_index,proto3"`
-		IsPointer  bool         `protobuf:"varint,6,opt,name=is_pointer,proto3"`
-		TypeName   string       `protobuf:"bytes,7,opt,name=type_name,proto3"`
-		Tags       *Tags        `protobuf:"bytes,8,opt,name=tags,proto3"`
+		KeyType    string       `protobuf:"bytes,5,opt,name=key_type,proto3,enum"`
+		IndexType  string       `protobuf:"bytes,6,opt,name=index_type,proto3,enum"`
+		FieldIndex []int        `protobuf:"varint,7,rep,packed,name=field_index,proto3"`
+		IsPointer  bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
+		TypeName   string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
+		Tags       *Tags        `protobuf:"bytes,10,opt,name=tags,proto3"`
 	}
 
 	Type struct {
@@ -123,13 +125,28 @@ func newField(f reflect.StructField) *Field {
 	switch out.Kind {
 	case reflect.Array, reflect.Slice:
 		{
-			out.Index = f.Type.Elem().Kind()
+			elem := f.Type.Elem()
+			if elem.Kind() == reflect.Pointer {
+				elem = elem.Elem()
+			}
+			out.Index = elem.Kind()
+			out.IndexType = TypeName(elem)
 		}
 	case reflect.Map:
 		{
+			elem := f.Type.Elem()
+			if elem.Kind() == reflect.Pointer {
+				elem = elem.Elem()
+			}
 			out.Key = f.Type.Key().Kind()
-			out.Index = f.Type.Elem().Kind()
+			out.KeyType = TypeName(f.Type.Key())
+			out.Index = elem.Kind()
+			out.IndexType = TypeName(elem)
 		}
+	}
+	if out.IsPointer {
+		out.TypeName = TypeName(f.Type.Elem())
+		return out
 	}
 	out.TypeName = TypeName(f.Type)
 	return out
