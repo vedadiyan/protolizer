@@ -423,7 +423,8 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 	return pos, fmt.Errorf("unexpected type %v", kind)
 }
 
-func UnmarshalAnonymous(typ *Type, bytes []byte) (map[string]any, error) {
+func UnmarshalAnonymous(typeName string, bytes []byte) (map[string]any, error) {
+	typ := CaptureTypeByName(typeName)
 	out := make(map[string]any)
 	pos := 0
 	for pos < len(bytes) {
@@ -627,7 +628,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 			if err != nil {
 				return nil, pos, err
 			}
-			v, err := UnmarshalAnonymous(CaptureTypeByName(field.TypeName), value)
+			v, err := UnmarshalAnonymous(field.TypeName, value)
 			if err != nil {
 				return nil, pos, err
 			}
