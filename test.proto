@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package test;
+
+option go_package = "test/protolizer";
+
+message Test {
+    int32 Id = 1;
+    string Name = 2;
+    repeated int32 Numbers = 3;
+    repeated string Values = 4;
+    map<int32, string> Data = 5;
+}

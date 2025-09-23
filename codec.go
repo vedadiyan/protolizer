@@ -464,6 +464,17 @@ func UnmarshalAnonymous(typeName string, bytes []byte) (map[string]any, error) {
 				}
 				out[field.Name] = t
 			}
+		case map[float64]any:
+			{
+				tmp, ok := value.(map[float64]any)
+				if !ok {
+					return nil, fmt.Errorf("expected map[string]any but got %T", value)
+				}
+				for key, value := range tmp {
+					t[key] = value
+				}
+				out[field.Name] = t
+			}
 		default:
 			{
 				slice := make([]any, 0)
@@ -574,7 +585,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 					innerPos := 0
 					out := make([]float64, 0)
 					for innerPos < len(value) {
-						value, consumed, err := decodeValueAnonymous(field, value, wireType, innerPos)
+						value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index}, value, wireType, innerPos)
 						if err != nil {
 							return nil, pos, err
 						}
@@ -585,7 +596,7 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 				}
 			default:
 				{
-					value, consumed, err := decodeValueAnonymous(field, bytes, wireType, pos)
+					value, consumed, err := decodeValueAnonymous(&Field{Kind: field.Index}, bytes, wireType, pos)
 					if err != nil {
 						return nil, pos, err
 					}
@@ -620,7 +631,10 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 			if err != nil {
 				return nil, pos, err
 			}
-			return map[string]any{fmt.Sprintf("%v", key): v}, pos + c, nil
+			if keyWireType == WireTypeVarint || keyWireType == WireTypeI32 || keyWireType == WireTypeI64 {
+				return map[float64]any{key.(float64): v}, pos + c, nil
+			}
+			return map[any]any{key: v}, pos + c, nil
 		}
 	case reflect.Struct:
 		{
