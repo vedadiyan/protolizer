@@ -25,11 +25,14 @@ type (
 		OneOf    bool
 	}
 	Field struct {
-		Name      string
-		Kind      reflect.Kind
-		Index     []int
-		IsPointer bool
-		Tags      *Tags
+		Name       string
+		Kind       reflect.Kind
+		Key        reflect.Kind
+		Index      reflect.Kind
+		FieldIndex []int
+		IsPointer  bool
+		TypeName   string
+		Tags       *Tags
 	}
 	Type struct {
 		Fields        []*Field
@@ -47,11 +50,11 @@ const (
 )
 
 var (
-	_registry map[reflect.Type]*Type
+	_registry map[string]*Type
 )
 
 func init() {
-	_registry = make(map[reflect.Type]*Type)
+	_registry = make(map[string]*Type)
 }
 
 func RegisterTypeFor[T any]() {
@@ -80,15 +83,23 @@ func RegisterTypeFor[T any]() {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
 
-	_registry[t] = out
+	_registry[TypeName(t)] = out
+}
+
+func TypeName(t reflect.Type) string {
+	return fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
 }
 
 func CaptureTypeFor[T any]() *Type {
-	return _registry[reflect.TypeFor[T]()]
+	return _registry[TypeName(reflect.TypeFor[T]())]
 }
 
 func CaptureType(t reflect.Type) *Type {
-	return _registry[t]
+	return _registry[TypeName(t)]
+}
+
+func CaptureTypeByName(typeName string) *Type {
+	return _registry[typeName]
 }
 
 func newField(f reflect.StructField) *Field {
@@ -100,8 +111,20 @@ func newField(f reflect.StructField) *Field {
 		out.IsPointer = true
 		out.Kind = f.Type.Elem().Kind()
 	}
-	out.Index = f.Index
+	out.FieldIndex = f.Index
 	out.Tags = newTags(f.Tag)
+	switch out.Kind {
+	case reflect.Array, reflect.Slice:
+		{
+			out.Index = f.Type.Elem().Kind()
+		}
+	case reflect.Map:
+		{
+			out.Key = f.Type.Key().Kind()
+			out.Index = f.Type.Elem().Kind()
+		}
+	}
+	out.TypeName = TypeName(f.Type)
 	return out
 }
 

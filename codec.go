@@ -29,7 +29,7 @@ func Marshal(v any) ([]byte, error) {
 	out := make([]byte, 0)
 	for _, i := range typ.Fields {
 		var opts []encodeOption
-		v := reflected.FieldByIndex(i.Index)
+		v := reflected.FieldByIndex(i.FieldIndex)
 		if v.Kind() == reflect.Map {
 			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
 		}
@@ -203,7 +203,7 @@ func Unmarshal(bytes []byte, v any) error {
 		if !ok {
 			continue
 		}
-		v := reflected.FieldByIndex(field.Index)
+		v := reflected.FieldByIndex(field.FieldIndex)
 		consumed, err = decodeValue(v, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
 		if err != nil {
 			return err
@@ -339,8 +339,8 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 			if v.IsZero() {
 				v.Set(reflect.MakeSlice(v.Type(), 0, 0))
 			}
-			_v := reflect.New(v.Type().Elem())
-			_v = _v.Elem()
+			tmp := reflect.New(v.Type().Elem())
+			tmp = tmp.Elem()
 			switch wireType {
 			case WireTypeVarint, WireTypeI32, WireTypeI64:
 				{
@@ -348,24 +348,24 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 					if err != nil {
 						return pos, err
 					}
-					_pos := 0
-					for _pos < len(value) {
-						consumed, err := decodeValue(_v, _v.Kind(), value, wireType, _pos)
+					innerPos := 0
+					for innerPos < len(value) {
+						consumed, err := decodeValue(tmp, tmp.Kind(), value, wireType, innerPos)
 						if err != nil {
 							return pos, err
 						}
-						_pos = consumed
-						v.Set(reflect.Append(v, _v))
+						innerPos = consumed
+						v.Set(reflect.Append(v, tmp))
 					}
 					return pos + consumed, nil
 				}
 			default:
 				{
-					consumed, err := decodeValue(_v, _v.Kind(), bytes, wireType, pos)
+					consumed, err := decodeValue(tmp, tmp.Kind(), bytes, wireType, pos)
 					if err != nil {
 						return pos, err
 					}
-					v.Set(reflect.Append(v, _v))
+					v.Set(reflect.Append(v, tmp))
 					return consumed, nil
 				}
 			}
@@ -381,30 +381,30 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 			if v.IsZero() {
 				v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 			}
-			_pos := 0
-			_, keyWireType, consumed, err := decodeTag(value, _pos)
+			innerPos := 0
+			_, keyWireType, consumed, err := decodeTag(value, innerPos)
 			if err != nil {
 				return pos, err
 			}
-			_pos += consumed
-			_key := reflect.New(keyType).Elem()
-			consumed, err = decodeValue(_key, _key.Kind(), value, keyWireType, _pos)
+			innerPos += consumed
+			key := reflect.New(keyType).Elem()
+			consumed, err = decodeValue(key, key.Kind(), value, keyWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
-			_pos = consumed
+			innerPos = consumed
 
-			_, valueWireType, consumed, err := decodeTag(value, _pos)
+			_, valueWireType, consumed, err := decodeTag(value, innerPos)
 			if err != nil {
 				return pos, err
 			}
-			_pos += consumed
-			_value := reflect.New(valueType).Elem()
-			_, err = decodeValue(_value, _value.Kind(), value, valueWireType, _pos)
+			innerPos += consumed
+			val := reflect.New(valueType).Elem()
+			_, err = decodeValue(val, val.Kind(), value, valueWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
-			v.SetMapIndex(_key, _value)
+			v.SetMapIndex(key, val)
 			return pos + c, nil
 		}
 	case reflect.Struct:
@@ -421,4 +421,218 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 		}
 	}
 	return pos, fmt.Errorf("unexpected type %v", kind)
+}
+
+func UnmarshalAnonymous(typ *Type, bytes []byte) (map[string]any, error) {
+	out := make(map[string]any)
+	pos := 0
+	for pos < len(bytes) {
+		fieldNum, _, consumed, err := decodeTag(bytes, pos)
+		if err != nil {
+			return nil, err
+		}
+		pos += consumed
+		field, ok := typ.FieldsIndexer[int(fieldNum)]
+		if !ok {
+			continue
+		}
+		value, consumed, err := decodeValueAnonymous(field, bytes, field.Tags.Protobuf.WireType, pos)
+		if err != nil {
+			return nil, err
+		}
+		pos = consumed
+		val, ok := out[field.Name]
+		if !ok {
+			out[field.Name] = value
+			continue
+		}
+		switch t := val.(type) {
+		case []any:
+			{
+				t = append(t, value)
+				out[field.Name] = t
+			}
+		case map[string]any:
+			{
+				tmp, ok := value.(map[string]any)
+				if !ok {
+					return nil, fmt.Errorf("expected map[string]any but got %T", value)
+				}
+				for key, value := range tmp {
+					t[key] = value
+				}
+				out[field.Name] = t
+			}
+		default:
+			{
+				slice := make([]any, 0)
+				slice = append(slice, t)
+				slice = append(slice, value)
+				out[field.Name] = slice
+			}
+		}
+	}
+	return out, nil
+}
+
+func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int) (any, int, error) {
+	switch field.Kind {
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
+		{
+
+			if wireType == WireTypeI32 {
+				value, consumed, err := decodeFixed32(bytes, pos)
+				if err != nil {
+					return nil, pos, err
+				}
+				return float64(value), pos + consumed, nil
+			}
+			if wireType == WireTypeI64 {
+				value, consumed, err := decodeFixed64(bytes, pos)
+				if err != nil {
+					return nil, pos, err
+				}
+				return float64(value), pos + consumed, nil
+			}
+			value, consumed, err := decodeVarint(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return float64(value), pos + consumed, nil
+		}
+	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+		{
+			if wireType == WireTypeI32 {
+				value, consumed, err := decodeFixed32(bytes, pos)
+				if err != nil {
+					return nil, pos, err
+				}
+				return float64(value), pos + consumed, nil
+			}
+			if wireType == WireTypeI64 {
+				value, consumed, err := decodeFixed64(bytes, pos)
+				if err != nil {
+					return nil, pos, err
+				}
+				return float64(value), pos + consumed, nil
+			}
+			value, consumed, err := decodeUvarint(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return float64(value), pos + consumed, nil
+		}
+	case reflect.Float32:
+		{
+			value, consumed, err := decodeFloat32(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return float64(value), pos + consumed, nil
+		}
+	case reflect.Float64:
+		{
+			value, consumed, err := decodeFloat64(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return float64(value), pos + consumed, nil
+		}
+	case reflect.Bool:
+		{
+			value, consumed, err := decodeBool(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return value, pos + consumed, nil
+		}
+	case reflect.String:
+		{
+			value, consumed, err := decodeString(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return value, pos + consumed, nil
+		}
+	case reflect.Array, reflect.Slice:
+		{
+			if field.Index == reflect.Uint8 {
+				value, consumed, err := decodeBytes(bytes, pos)
+				if err != nil {
+					return nil, pos, err
+				}
+				return value, pos + consumed, nil
+			}
+			switch wireType {
+			case WireTypeVarint, WireTypeI32, WireTypeI64:
+				{
+					value, consumed, err := decodeBytes(bytes, pos)
+					if err != nil {
+						return nil, pos, err
+					}
+					innerPos := 0
+					out := make([]float64, 0)
+					for innerPos < len(value) {
+						value, consumed, err := decodeValueAnonymous(field, value, wireType, innerPos)
+						if err != nil {
+							return nil, pos, err
+						}
+						innerPos = consumed
+						out = append(out, value.(float64))
+					}
+					return out, pos + consumed, nil
+				}
+			default:
+				{
+					value, consumed, err := decodeValueAnonymous(field, bytes, wireType, pos)
+					if err != nil {
+						return nil, pos, err
+					}
+					return value, consumed, nil
+				}
+			}
+		}
+	case reflect.Map:
+		{
+			value, c, err := decodeBytes(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			innerPos := 0
+			_, keyWireType, consumed, err := decodeTag(value, innerPos)
+			if err != nil {
+				return nil, pos, err
+			}
+			innerPos += consumed
+			key, consumed, err := decodeValueAnonymous(&Field{Kind: field.Key}, value, keyWireType, innerPos)
+			if err != nil {
+				return nil, pos, err
+			}
+			innerPos = consumed
+
+			_, valueWireType, consumed, err := decodeTag(value, innerPos)
+			if err != nil {
+				return nil, pos, err
+			}
+			innerPos += consumed
+			v, _, err := decodeValueAnonymous(&Field{Kind: field.Index}, value, valueWireType, innerPos)
+			if err != nil {
+				return nil, pos, err
+			}
+			return map[string]any{fmt.Sprintf("%v", key): v}, pos + c, nil
+		}
+	case reflect.Struct:
+		{
+			value, c, err := decodeBytes(bytes, pos)
+			if err != nil {
+				return nil, pos, err
+			}
+			v, err := UnmarshalAnonymous(CaptureTypeByName(field.TypeName), value)
+			if err != nil {
+				return nil, pos, err
+			}
+			return v, pos + c, nil
+		}
+	}
+	return nil, pos, fmt.Errorf("unexpected type %v", field)
 }
