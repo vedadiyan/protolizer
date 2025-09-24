@@ -223,7 +223,7 @@ func Unmarshal(bytes []byte, v any) error {
 			continue
 		}
 		v2 := reflected.FieldByIndex(field.FieldIndex)
-		consumed, err = decodeValue(v2, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
+		consumed, err = decodeValue(&v2, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
 		if err != nil {
 			return err
 		}
@@ -232,25 +232,17 @@ func Unmarshal(bytes []byte, v any) error {
 	return nil
 }
 
-func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int) (int, error) {
+func decodeValue(v *reflect.Value, kind reflect.Kind, bytes []byte, wireType WireType, pos int) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			if wireType == WireTypeI32 {
 				value, consumed, err := decodeFixed32(bytes, pos)
 				if err != nil {
 					return pos, err
 				}
-				if isPointer {
-					v = v.Addr()
-				}
-				v.SetInt(int64(value))
+				elem.SetInt(int64(value))
 				return pos + consumed, nil
 			}
 			if wireType == WireTypeI64 {
@@ -258,39 +250,25 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 				if err != nil {
 					return pos, err
 				}
-				if isPointer {
-					v = v.Addr()
-				}
-				v.SetInt(value)
+				elem.SetInt(value)
 				return pos + consumed, nil
 			}
 			value, consumed, err := decodeVarint(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetInt(int64(value))
+			elem.SetInt(int64(value))
 			return pos + consumed, nil
 		}
 	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			if wireType == WireTypeI32 {
 				value, consumed, err := decodeFixed32(bytes, pos)
 				if err != nil {
 					return pos, err
 				}
-				if isPointer {
-					v = v.Addr()
-				}
-				v.SetUint(uint64(value))
+				elem.SetUint(uint64(value))
 				return pos + consumed, nil
 			}
 			if wireType == WireTypeI64 {
@@ -298,92 +276,54 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 				if err != nil {
 					return pos, err
 				}
-				if isPointer {
-					v = v.Addr()
-				}
-				v.SetUint(uint64(value))
+				elem.SetUint(uint64(value))
 				return pos + consumed, nil
 			}
 			value, consumed, err := decodeUvarint(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetUint(value)
+			elem.SetUint(value)
 			return pos + consumed, nil
 		}
 	case reflect.Float32:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			value, consumed, err := decodeFloat32(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetFloat(float64(value))
+			elem.SetFloat(float64(value))
 			return pos + consumed, nil
 		}
 	case reflect.Float64:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			value, consumed, err := decodeFloat64(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetFloat(value)
+			elem.SetFloat(value)
 			return pos + consumed, nil
 		}
 	case reflect.Bool:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			value, consumed, err := decodeBool(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetBool(value)
+			elem.SetBool(value)
 			return pos + consumed, nil
 		}
 	case reflect.String:
 		{
-			isPointer := false
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-				isPointer = true
-			}
+			elem, _ := dereference(v)
 			value, consumed, err := decodeString(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				v = v.Addr()
-			}
-			v.SetString(value)
+			elem.SetString(value)
 			return pos + consumed, nil
 		}
 	case reflect.Array, reflect.Slice:
@@ -411,40 +351,24 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 					}
 					innerPos := 0
 					for innerPos < len(value) {
-						isPointer := false
-						if tmp.Kind() == reflect.Pointer {
-							tmp.Set(reflect.New(tmp.Type().Elem()))
-							tmp = tmp.Elem()
-							isPointer = true
-						}
-						consumed, err := decodeValue(tmp, tmp.Kind(), value, wireType, innerPos)
+						elem, addr := dereference(&tmp)
+						consumed, err := decodeValue(elem, elem.Kind(), value, wireType, innerPos)
 						if err != nil {
 							return pos, err
 						}
 						innerPos = consumed
-						if isPointer {
-							tmp = tmp.Addr()
-						}
-						v.Set(reflect.Append(v, tmp))
+						v.Set(reflect.Append(*v, *addr))
 					}
 					return pos + consumed, nil
 				}
 			default:
 				{
-					isPointer := false
-					if tmp.Kind() == reflect.Pointer {
-						tmp.Set(reflect.New(tmp.Type().Elem()))
-						tmp = tmp.Elem()
-						isPointer = true
-					}
-					consumed, err := decodeValue(tmp, tmp.Kind(), bytes, wireType, pos)
+					elem, addr := dereference(&tmp)
+					consumed, err := decodeValue(elem, elem.Kind(), bytes, wireType, pos)
 					if err != nil {
 						return pos, err
 					}
-					if isPointer {
-						tmp = tmp.Addr()
-					}
-					v.Set(reflect.Append(v, tmp))
+					v.Set(reflect.Append(*v, *addr))
 					return consumed, nil
 				}
 			}
@@ -467,7 +391,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 			}
 			innerPos += consumed
 			key := reflect.New(keyType).Elem()
-			consumed, err = decodeValue(key, key.Kind(), value, keyWireType, innerPos)
+			consumed, err = decodeValue(&key, key.Kind(), value, keyWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
@@ -479,37 +403,24 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes []byte, wireType Wire
 			}
 			innerPos += consumed
 			val := reflect.New(valueType).Elem()
-			isPointer := false
-			if val.Kind() == reflect.Pointer {
-				val.Set(reflect.New(val.Type().Elem()))
-				val = val.Elem()
-				isPointer = true
-			}
-			_, err = decodeValue(val, val.Kind(), value, valueWireType, innerPos)
+			elem, addr := dereference(&val)
+			_, err = decodeValue(elem, elem.Kind(), value, valueWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
-			if isPointer {
-				val = val.Addr()
-			}
-			v.SetMapIndex(key, val)
+			v.SetMapIndex(key, *addr)
 			return pos + c, nil
 		}
 	case reflect.Struct:
 		{
+			elem, _ := dereference(v)
 			value, c, err := decodeBytes(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
-			if v.Kind() == reflect.Pointer {
-				v.Set(reflect.New(v.Type().Elem()))
-				v = v.Elem()
-			}
-			if err := Unmarshal(value, v.Addr().Interface()); err != nil {
+			if err := Unmarshal(value, elem.Addr().Interface()); err != nil {
 				return c, err
 			}
-			tmp := v.Interface()
-			_ = tmp
 			return pos + c, nil
 		}
 	}
@@ -743,4 +654,13 @@ func decodeValueAnonymous(field *Field, bytes []byte, wireType WireType, pos int
 		}
 	}
 	return nil, pos, fmt.Errorf("unexpected type %v", field)
+}
+
+func dereference(v *reflect.Value) (*reflect.Value, *reflect.Value) {
+	if v.Kind() == reflect.Pointer {
+		v.Set(reflect.New(v.Type().Elem()))
+		elem := v.Elem()
+		return &elem, v
+	}
+	return v, v
 }

@@ -1,6 +1,8 @@
 package protolizer
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func encodeBytes(value []byte) []byte {
 	length := encodeVarint(int64(len(value)))
