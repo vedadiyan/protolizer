@@ -47,7 +47,7 @@ func Marshal(v any) ([]byte, error) {
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
-		bytes, err := encodeValue(v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
+		bytes, err := encodeValue(&v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func Marshal(v any) ([]byte, error) {
 	return out, nil
 }
 
-func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) ([]byte, error) {
+func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) ([]byte, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -109,7 +109,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(&v, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -131,7 +131,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(&v, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -166,7 +166,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 				if err != nil {
 					return nil, err
 				}
-				keyBytes, err := encodeValue(key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
+				keyBytes, err := encodeValue(&key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
 				}
@@ -178,7 +178,7 @@ func encodeValue(v reflect.Value, kind reflect.Kind, fieldNumber int, wireType W
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}
-				valueBytes, err := encodeValue(value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
+				valueBytes, err := encodeValue(&value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
 				if err != nil {
 					return nil, err
 				}
