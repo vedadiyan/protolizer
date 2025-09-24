@@ -15,7 +15,12 @@ func TestAll(t *testing.T) {
 		1: "something",
 		2: "another",
 	}
+	modules, err := ExportModule[Type]()
+	_ = modules
 
+	xxxxzzzx, err := ImportModule(modules)
+
+	_ = xxxxzzzx
 	RegisterTypeFor[Test]()
 	xxz := CaptureTypeFor[Test]()
 

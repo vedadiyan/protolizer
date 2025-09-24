@@ -40,8 +40,13 @@ type (
 	}
 
 	Type struct {
-		Fields        []*Field       `protobuf:"bytes,1,rep,name=fields,proto3"`
-		FieldsIndexer map[int]*Field `protobuf:"bytes,2,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+		Name          string         `protobuf:"bytes,1,opt,name=fields,proto3"`
+		Fields        []*Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
+		FieldsIndexer map[int]*Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	}
+
+	Module struct {
+		Types map[string]*Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 )
 
@@ -64,6 +69,7 @@ func init() {
 	RegisterTypeFor[ProtobufInfo]()
 	RegisterTypeFor[Field]()
 	RegisterTypeFor[Type]()
+	RegisterTypeFor[Module]()
 }
 
 func RegisterTypeFor[T any]() {
@@ -75,6 +81,7 @@ func RegisterTypeFor[T any]() {
 		elemType = t.Elem()
 	}
 
+	out.Name = TypeName(elemType)
 	out.Fields = make([]*Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
@@ -254,4 +261,47 @@ func ImportType(bytes []byte) (*Type, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+func exportModule(t reflect.Type) (*Module, error) {
+	module := new(Module)
+	module.Types = make(map[string]*Type)
+	module.Types[TypeName(t)] = CaptureType(t)
+	for i := range t.NumField() {
+		fieldType := t.Field(i).Type
+		if fieldType.Kind() == reflect.Array || fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Map {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
+			modules, err := exportModule(fieldType)
+			if err != nil {
+				return nil, err
+			}
+			for key, value := range modules.Types {
+				module.Types[key] = value
+			}
+			continue
+		}
+	}
+	return module, nil
+}
+
+func ExportModule[T any]() ([]byte, error) {
+	modules, err := exportModule(reflect.TypeFor[T]())
+	if err != nil {
+		return nil, err
+	}
+	return Marshal(modules)
+}
+
+func ImportModule(bytes []byte) (*Module, error) {
+	module := new(Module)
+	err := Unmarshal(bytes, module)
+	if err != nil {
+		return nil, err
+	}
+	return module, nil
 }
