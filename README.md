@@ -48,7 +48,7 @@ func main() {
     }
     
     // Marshal to protobuf bytes
-    data, err := protolizer.Marshal(person)
+    data, err := protolizer.Marshal(&person)
     if err != nil {
         panic(err)
     }
