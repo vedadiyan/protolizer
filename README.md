@@ -15,7 +15,7 @@ A zero-dependency, reflection-based Protocol Buffers library for Go that enables
 ## 🚀 Installation
 
 ```bash
-go get github.com/yourusername/protolizer
+go get github.com/vedadiyan/protolizer
 ```
 
 ## 📖 Quick Start
@@ -27,7 +27,7 @@ package main
 
 import (
     "fmt"
-    "github.com/yourusername/protolizer"
+    "github.com/vedadiyan/protolizer"
 )
 
 type Person struct {
@@ -291,7 +291,7 @@ Each field is prefixed with a tag containing:
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/protolizer.git
+git clone https://github.com/vedadiyan/protolizer.git
 cd protolizer
 
 # Run tests
