@@ -31,13 +31,13 @@ func TestAll(t *testing.T) {
 	typ, err := ImportType(xxx)
 	_ = typ
 
-	xxzzxxz, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Type", xxx)
+	xxzzxxz, err := Read("github.com/vedadiyan/protolizer.Type", xxx)
 
 	_ = xxzzxxz
 
-	zxzx, err := MarshalFromMap("github.com/vedadiyan/protolizer.Type", xxzzxxz)
+	zxzx, err := Write("github.com/vedadiyan/protolizer.Type", xxzzxxz)
 
-	zzxxzx, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Type", zxzx)
+	zzxxzx, err := Read("github.com/vedadiyan/protolizer.Type", zxzx)
 
 	_ = zzxxzx
 
@@ -52,7 +52,7 @@ func TestAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	out, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Test", bytes)
+	out, err := Read("github.com/vedadiyan/protolizer.Test", bytes)
 	if err != nil {
 		t.FailNow()
 	}
