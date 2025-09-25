@@ -1,19 +1,27 @@
 package protolizer
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 func encodeVarint(value int64) []byte {
 	return encodeUvarint(uint64(value))
 }
 
 func encodeUvarint(value uint64) []byte {
-	var result []byte
+	result := _buffer.Get().(*bytes.Buffer)
+	defer func() {
+		result.Reset()
+		_buffer.Put(result)
+	}()
+
 	for value >= 0x80 {
-		result = append(result, byte(value)|0x80)
+		result.WriteByte(byte(value) | 0x80)
 		value >>= 7
 	}
-	result = append(result, byte(value))
-	return result
+	result.WriteByte(byte(value))
+	return result.Bytes()
 }
 
 func decodeVarint(data []byte, offset int) (int64, int, error) {

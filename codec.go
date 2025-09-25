@@ -1,8 +1,10 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 type (
@@ -11,6 +13,14 @@ type (
 		MapValueWireType WireType
 	}
 	encodeOption func(*encodeOptions)
+)
+
+var (
+	_buffer = sync.Pool{
+		New: func() any {
+			return bytes.NewBuffer([]byte{})
+		},
+	}
 )
 
 func withMapWireTypes(key WireType, value WireType) encodeOption {
@@ -26,34 +36,44 @@ func Marshal(v any) ([]byte, error) {
 		reflected = reflected.Elem()
 	}
 	typ := CaptureType(reflected.Type())
-	out := make([]byte, 0)
+	out := _buffer.Get().(*bytes.Buffer)
+	defer func() {
+		out.Reset()
+		_buffer.Put(out)
+	}()
 	for _, i := range typ.Fields {
 		var opts []encodeOption
 		v := reflected.FieldByIndex(i.FieldIndex)
-		if v.Kind() == reflect.Map {
-			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
+		if v.IsZero() {
+			continue
 		}
 		w := i.Tags.Protobuf.WireType
-		if i.Kind == reflect.Slice {
-			w = WireTypeLen
+		switch v.Kind() {
+		case reflect.Map:
+			{
+				opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
+			}
+		case reflect.Slice:
+			{
+				w = WireTypeLen
+			}
+		case reflect.Pointer:
+			{
+				v = v.Elem()
+			}
 		}
 		tag, err := encodeTag(int32(i.Tags.Protobuf.FieldNum), w)
 		if err != nil {
 			return nil, err
 		}
-		if v.IsZero() {
-			continue
-		}
-		if v.Kind() == reflect.Pointer {
-			v = v.Elem()
-		}
 		bytes, err := encodeValue(&v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, append(tag, bytes...)...)
+		out.Write(tag)
+		out.Write(bytes)
 	}
-	return out, nil
+	return out.Bytes(), nil
 }
 
 func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) ([]byte, error) {
@@ -100,7 +120,11 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 			if k == reflect.Uint8 {
 				return encodeBytes(v.Bytes()), nil
 			}
-			var data []byte
+			data := _buffer.Get().(*bytes.Buffer)
+			defer func() {
+				data.Reset()
+				_buffer.Put(data)
+			}()
 			switch wireType {
 			case WireTypeVarint, WireTypeI32, WireTypeI64:
 				{
@@ -113,19 +137,19 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						if err != nil {
 							return nil, err
 						}
-						data = append(data, bytes...)
+						data.Write(bytes)
 					}
-					return encodeBytes(data), nil
+					return encodeBytes(data.Bytes()), nil
 				}
 			default:
 				{
 					for i := 0; i < v.Len(); i++ {
-						if len(data) != 0 {
+						if data.Len() != 0 {
 							tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
 							if err != nil {
 								return nil, err
 							}
-							data = append(data, tag...)
+							data.Write(tag)
 						}
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
@@ -135,9 +159,9 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						if err != nil {
 							return nil, err
 						}
-						data = append(data, bytes...)
+						data.Write(bytes)
 					}
-					return data, nil
+					return data.Bytes(), nil
 				}
 			}
 
@@ -148,15 +172,19 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 			for _, opt := range opts {
 				opt(encodeOptions)
 			}
-			var data []byte
+			data := _buffer.Get().(*bytes.Buffer)
+			defer func() {
+				data.Reset()
+				_buffer.Put(data)
+			}()
 			mapRange := v.MapRange()
 			for mapRange.Next() {
-				if len(data) != 0 {
+				if data.Len() != 0 {
 					tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
 					if err != nil {
 						return nil, err
 					}
-					data = append(data, tag...)
+					data.Write(tag)
 				}
 				key := mapRange.Key()
 				if key.Kind() == reflect.Pointer {
@@ -182,13 +210,17 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if err != nil {
 					return nil, err
 				}
-
-				keyEntry := append(keyTag, keyBytes...)
-				valueEntry := append(valueTag, valueBytes...)
-				entry := encodeBytes(append(keyEntry, valueEntry...))
-				data = append(data, entry...)
+				keyValue := _buffer.Get().(*bytes.Buffer)
+				keyValue.Write(keyTag)
+				keyValue.Write(keyBytes)
+				keyValue.Write(valueTag)
+				keyValue.Write(valueBytes)
+				entry := encodeBytes(keyValue.Bytes())
+				keyValue.Reset()
+				_buffer.Put(keyValue)
+				data.Write(entry)
 			}
-			return data, nil
+			return data.Bytes(), nil
 		}
 	case reflect.Struct:
 		{

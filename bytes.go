@@ -1,12 +1,20 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 )
 
 func encodeBytes(value []byte) []byte {
+	out := _buffer.Get().(*bytes.Buffer)
+	defer func() {
+		out.Reset()
+		_buffer.Put(out)
+	}()
 	length := encodeVarint(int64(len(value)))
-	return append(length, value...)
+	out.Write(length)
+	out.Write(value)
+	return out.Bytes()
 }
 
 func encodeString(value string) []byte {
@@ -30,9 +38,7 @@ func decodeBytes(data []byte, offset int) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("insufficient bytes for length-prefixed data")
 	}
 
-	value := make([]byte, length)
-	copy(value, data[start:end])
-	return value, lengthSize + int(length), nil
+	return data[start:end], lengthSize + int(length), nil
 }
 
 func decodeString(data []byte, offset int) (string, int, error) {
