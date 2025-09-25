@@ -1,23 +1,36 @@
 package protolizer
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math"
 )
 
 func encodeFloat32(value float32) []byte {
-	buf := make([]byte, 4)
+	buf := _buffer.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		_buffer.Put(buf)
+	}()
+	buf.Grow(4)
+	out := buf.AvailableBuffer()[:4]
 	bits := math.Float32bits(value)
-	binary.LittleEndian.PutUint32(buf, bits)
-	return buf
+	binary.LittleEndian.PutUint32(out, bits)
+	return out
 }
 
 func encodeFloat64(value float64) []byte {
-	buf := make([]byte, 8)
+	buf := _buffer.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		_buffer.Put(buf)
+	}()
+	buf.Grow(8)
+	out := buf.AvailableBuffer()[:8]
 	bits := math.Float64bits(value)
-	binary.LittleEndian.PutUint64(buf, bits)
-	return buf
+	binary.LittleEndian.PutUint64(out, bits)
+	return out
 }
 
 func decodeFloat32(data []byte, offset int) (float32, int, error) {

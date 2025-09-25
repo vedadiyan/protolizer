@@ -12,6 +12,7 @@ func encodeFixed32(value int32) []byte {
 		buf.Reset()
 		_buffer.Put(buf)
 	}()
+	buf.Grow(4)
 	out := buf.AvailableBuffer()[:4]
 	binary.LittleEndian.PutUint32(out, uint32(value))
 	return out
@@ -23,6 +24,7 @@ func encodeFixed64(value int64) []byte {
 		buf.Reset()
 		_buffer.Put(buf)
 	}()
+	buf.Grow(8)
 	out := buf.AvailableBuffer()[:8]
 	binary.LittleEndian.PutUint64(out, uint64(value))
 	return out
