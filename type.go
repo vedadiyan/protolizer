@@ -11,29 +11,42 @@ import (
 type (
 	WireType uint8
 	Tags     struct {
-		Protobuf *ProtobufInfo
-		JsonName string
-		MapKey   WireType
-		MapValue WireType
+		Protobuf *ProtobufInfo `protobuf:"bytes,1,opt,name=protobuf,proto3"`
+		JsonName string        `protobuf:"bytes,2,opt,name=json_name,proto3"`
+		MapKey   WireType      `protobuf:"varint,3,opt,name=map_key,proto3,enum"`
+		MapValue WireType      `protobuf:"varint,4,opt,name=map_value,proto3,enum"`
 	}
+
 	ProtobufInfo struct {
-		WireType WireType
-		FieldNum int
-		Label    string
-		Name     string
-		Syntax   string
-		OneOf    bool
+		WireType WireType `protobuf:"varint,1,opt,name=wire_type,proto3,enum"`
+		FieldNum int      `protobuf:"varint,2,opt,name=field_num,proto3"`
+		Label    string   `protobuf:"bytes,3,opt,name=label,proto3"`
+		Name     string   `protobuf:"bytes,4,opt,name=name,proto3"`
+		Syntax   string   `protobuf:"bytes,5,opt,name=syntax,proto3"`
+		OneOf    bool     `protobuf:"varint,6,opt,name=one_of,proto3"`
 	}
+
 	Field struct {
-		Name      string
-		Kind      reflect.Kind
-		Index     []int
-		IsPointer bool
-		Tags      *Tags
+		Name       string       `protobuf:"bytes,1,opt,name=name,proto3"`
+		Kind       reflect.Kind `protobuf:"varint,2,opt,name=kind,proto3,enum"`
+		Key        reflect.Kind `protobuf:"varint,3,opt,name=key,proto3,enum"`
+		Index      reflect.Kind `protobuf:"varint,4,opt,name=index,proto3"`
+		KeyType    string       `protobuf:"bytes,5,opt,name=key_type,proto3,enum"`
+		IndexType  string       `protobuf:"bytes,6,opt,name=index_type,proto3,enum"`
+		FieldIndex []int        `protobuf:"varint,7,rep,packed,name=field_index,proto3"`
+		IsPointer  bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
+		TypeName   string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
+		Tags       *Tags        `protobuf:"bytes,10,opt,name=tags,proto3"`
 	}
+
 	Type struct {
-		Fields        []*Field
-		FieldsIndexer map[int]*Field
+		Name          string         `protobuf:"bytes,1,opt,name=fields,proto3"`
+		Fields        []*Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
+		FieldsIndexer map[int]*Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	}
+
+	Module struct {
+		Types map[string]*Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 )
 
@@ -47,11 +60,16 @@ const (
 )
 
 var (
-	_registry map[reflect.Type]*Type
+	_registry map[string]*Type
 )
 
 func init() {
-	_registry = make(map[reflect.Type]*Type)
+	_registry = make(map[string]*Type)
+	RegisterTypeFor[Tags]()
+	RegisterTypeFor[ProtobufInfo]()
+	RegisterTypeFor[Field]()
+	RegisterTypeFor[Type]()
+	RegisterTypeFor[Module]()
 }
 
 func RegisterTypeFor[T any]() {
@@ -63,6 +81,7 @@ func RegisterTypeFor[T any]() {
 		elemType = t.Elem()
 	}
 
+	out.Name = TypeName(elemType)
 	out.Fields = make([]*Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
@@ -80,15 +99,23 @@ func RegisterTypeFor[T any]() {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
 
-	_registry[t] = out
+	_registry[TypeName(t)] = out
+}
+
+func TypeName(t reflect.Type) string {
+	return fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
 }
 
 func CaptureTypeFor[T any]() *Type {
-	return _registry[reflect.TypeFor[T]()]
+	return _registry[TypeName(reflect.TypeFor[T]())]
 }
 
 func CaptureType(t reflect.Type) *Type {
-	return _registry[t]
+	return _registry[TypeName(t)]
+}
+
+func CaptureTypeByName(typeName string) *Type {
+	return _registry[typeName]
 }
 
 func newField(f reflect.StructField) *Field {
@@ -100,8 +127,35 @@ func newField(f reflect.StructField) *Field {
 		out.IsPointer = true
 		out.Kind = f.Type.Elem().Kind()
 	}
-	out.Index = f.Index
+	out.FieldIndex = f.Index
 	out.Tags = newTags(f.Tag)
+	switch out.Kind {
+	case reflect.Array, reflect.Slice:
+		{
+			elem := f.Type.Elem()
+			if elem.Kind() == reflect.Pointer {
+				elem = elem.Elem()
+			}
+			out.Index = elem.Kind()
+			out.IndexType = TypeName(elem)
+		}
+	case reflect.Map:
+		{
+			elem := f.Type.Elem()
+			if elem.Kind() == reflect.Pointer {
+				elem = elem.Elem()
+			}
+			out.Key = f.Type.Key().Kind()
+			out.KeyType = TypeName(f.Type.Key())
+			out.Index = elem.Kind()
+			out.IndexType = TypeName(elem)
+		}
+	}
+	if out.IsPointer {
+		out.TypeName = TypeName(f.Type.Elem())
+		return out
+	}
+	out.TypeName = TypeName(f.Type)
 	return out
 }
 
@@ -194,4 +248,60 @@ func parseProtoTag(tag string) *ProtobufInfo {
 
 func (t *Tags) isProtobuf() bool {
 	return t.Protobuf != nil
+}
+
+func ExportType[T any]() ([]byte, error) {
+	t := CaptureTypeFor[T]()
+	return Marshal(t)
+}
+
+func ImportType(bytes []byte) (*Type, error) {
+	t := new(Type)
+	if err := Unmarshal(bytes, t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func exportModule(t reflect.Type) (*Module, error) {
+	module := new(Module)
+	module.Types = make(map[string]*Type)
+	module.Types[TypeName(t)] = CaptureType(t)
+	for i := range t.NumField() {
+		fieldType := t.Field(i).Type
+		if fieldType.Kind() == reflect.Array || fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Map {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
+			modules, err := exportModule(fieldType)
+			if err != nil {
+				return nil, err
+			}
+			for key, value := range modules.Types {
+				module.Types[key] = value
+			}
+			continue
+		}
+	}
+	return module, nil
+}
+
+func ExportModule[T any]() ([]byte, error) {
+	modules, err := exportModule(reflect.TypeFor[T]())
+	if err != nil {
+		return nil, err
+	}
+	return Marshal(modules)
+}
+
+func ImportModule(bytes []byte) (*Module, error) {
+	module := new(Module)
+	err := Unmarshal(bytes, module)
+	if err != nil {
+		return nil, err
+	}
+	return module, nil
 }
