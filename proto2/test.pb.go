@@ -31,6 +31,10 @@ type SimplePerson struct {
 	sizeCache     protoimpl.SizeCache
 }
 
+func (simplePerson *SimplePerson) ProtoName() string {
+	return "SimplePerson"
+}
+
 func (x *SimplePerson) Reset() {
 	*x = SimplePerson{}
 	mi := &file_test_proto_msgTypes[0]

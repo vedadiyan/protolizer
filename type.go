@@ -103,7 +103,7 @@ func RegisterTypeFor[T any]() {
 }
 
 func TypeName(t reflect.Type) string {
-	return t.Name()
+	return t.String()
 }
 
 func CaptureTypeFor[T any]() *Type {
