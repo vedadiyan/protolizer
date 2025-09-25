@@ -103,7 +103,7 @@ func RegisterTypeFor[T any]() {
 }
 
 func TypeName(t reflect.Type) string {
-	return fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
+	return t.Name()
 }
 
 func CaptureTypeFor[T any]() *Type {
