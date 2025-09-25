@@ -31,9 +31,17 @@ func TestAll(t *testing.T) {
 	typ, err := ImportType(xxx)
 	_ = typ
 
-	xxzzxxz, err := UnmarshalAnonymous("github.com/vedadiyan/protolizer.Type", xxx)
+	xxzzxxz, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Type", xxx)
 
 	_ = xxzzxxz
+
+	zxzx, err := MarshalFromMap("github.com/vedadiyan/protolizer.Type", xxzzxxz)
+
+	zzxxzx, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Type", zxzx)
+
+	_ = zzxxzx
+
+	_ = zxzx
 	bytes, err := Marshal(test)
 	if err != nil {
 		t.FailNow()
@@ -44,7 +52,7 @@ func TestAll(t *testing.T) {
 		t.FailNow()
 	}
 
-	out, err := UnmarshalAnonymous("github.com/vedadiyan/protolizer.Test", bytes)
+	out, err := UnmarshalToMap("github.com/vedadiyan/protolizer.Test", bytes)
 	if err != nil {
 		t.FailNow()
 	}
