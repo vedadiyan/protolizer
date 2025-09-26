@@ -2,15 +2,15 @@ package protolizer
 
 import "bytes"
 
-func encodeBool(value bool) *bytes.Buffer {
+func boolEncode(value bool) *bytes.Buffer {
 	if value {
-		return encodeVarint(1)
+		return varintEncode(1)
 	}
-	return encodeVarint(0)
+	return varintEncode(0)
 }
 
-func decodeBool(data []byte, offset int) (bool, int, error) {
-	value, consumed, err := decodeVarint(data, offset)
+func boolDecode(data []byte, offset int) (bool, int, error) {
+	value, consumed, err := varintDecode(data, offset)
 	if err != nil {
 		return false, 0, err
 	}

@@ -7,7 +7,7 @@ import (
 	"math"
 )
 
-func encodeFloat32(value float32) *bytes.Buffer {
+func float32Encode(value float32) *bytes.Buffer {
 	memory := alloc(4)
 	buf := memory.AvailableBuffer()[:4]
 	bits := math.Float32bits(value)
@@ -16,7 +16,7 @@ func encodeFloat32(value float32) *bytes.Buffer {
 	return memory
 }
 
-func encodeFloat64(value float64) *bytes.Buffer {
+func float46Encode(value float64) *bytes.Buffer {
 	memory := alloc(8)
 	buf := memory.AvailableBuffer()[:8]
 	bits := math.Float64bits(value)
@@ -25,7 +25,7 @@ func encodeFloat64(value float64) *bytes.Buffer {
 	return memory
 }
 
-func decodeFloat32(data []byte, offset int) (float32, int, error) {
+func float32Decode(data []byte, offset int) (float32, int, error) {
 	if len(data) < offset+4 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float32")
 	}
@@ -34,7 +34,7 @@ func decodeFloat32(data []byte, offset int) (float32, int, error) {
 	return value, 4, nil
 }
 
-func decodeFloat64(data []byte, offset int) (float64, int, error) {
+func float64Decode(data []byte, offset int) (float64, int, error) {
 	if len(data) < offset+8 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float64")
 	}

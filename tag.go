@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func encodeTag(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
+func tagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	if fieldNumber < 1 {
 		return nil, fmt.Errorf("field number must be positive")
 	}
@@ -14,11 +14,11 @@ func encodeTag(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	}
 
 	tag := (int64(fieldNumber) << 3) | int64(wireType)
-	return encodeVarint(tag), nil
+	return varintEncode(tag), nil
 }
 
-func decodeTag(data []byte, offset int) (int32, WireType, int, error) {
-	tag, consumed, err := decodeVarint(data, offset)
+func tagDecode(data []byte, offset int) (int32, WireType, int, error) {
+	tag, consumed, err := varintDecode(data, offset)
 	if err != nil {
 		return 0, 0, 0, err
 	}

@@ -5,17 +5,17 @@ import (
 	"fmt"
 )
 
-func encodeVarint(value int64) *bytes.Buffer {
-	return encodeUvarint(uint64(value))
+func varintEncode(value int64) *bytes.Buffer {
+	return uvarintEncode(uint64(value))
 }
 
-func encodeUvarint(value uint64) *bytes.Buffer {
+func uvarintEncode(value uint64) *bytes.Buffer {
 	memory := alloc(0)
-	encodeUvarintToBuffer(value, memory)
+	uvarint(value, memory)
 	return memory
 }
 
-func encodeUvarintToBuffer(value uint64, buffer *bytes.Buffer) {
+func uvarint(value uint64, buffer *bytes.Buffer) {
 	for value >= 0x80 {
 		buffer.WriteByte(byte(value) | 0x80)
 		value >>= 7
@@ -23,12 +23,12 @@ func encodeUvarintToBuffer(value uint64, buffer *bytes.Buffer) {
 	buffer.WriteByte(byte(value))
 }
 
-func decodeVarint(data []byte, offset int) (int64, int, error) {
-	value, consumed, err := decodeUvarint(data, offset)
+func varintDecode(data []byte, offset int) (int64, int, error) {
+	value, consumed, err := uvarintDecode(data, offset)
 	return int64(value), consumed, err
 }
 
-func decodeUvarint(data []byte, offset int) (uint64, int, error) {
+func uvarintDecode(data []byte, offset int) (uint64, int, error) {
 	var result uint64
 	var shift uint
 	pos := offset
