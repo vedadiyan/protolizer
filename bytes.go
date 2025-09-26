@@ -7,9 +7,12 @@ import (
 
 func encodeBytes(value []byte) *bytes.Buffer {
 	memory := alloc(0)
-	length := encodeVarint(int64(len(value)))
-	length.WriteTo(memory)
-	dealloc(length)
+	v := len(value)
+	for v >= 0x80 {
+		memory.WriteByte(byte(v) | 0x80)
+		v >>= 7
+	}
+	memory.WriteByte(byte(v))
 	memory.Write(value)
 	return memory
 }
