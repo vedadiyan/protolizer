@@ -6,57 +6,37 @@ import (
 	"reflect"
 )
 
-type (
-	encodeOptions struct {
-		MapKeyWireType   WireType
-		MapValueWireType WireType
-		MapKeyTag        []byte
-		MapValueTag      []byte
-	}
-	encodeOption func(*encodeOptions)
-)
-
-func withMapWireTypes(key WireType, value WireType, keyTag []byte, valueTag []byte) encodeOption {
-	return func(eo *encodeOptions) {
-		eo.MapKeyWireType = key
-		eo.MapValueWireType = value
-		eo.MapKeyTag = keyTag
-		eo.MapValueTag = valueTag
-	}
-}
-
 func Marshal(v any) ([]byte, error) {
 	return marshal(reflect.ValueOf(v))
 }
 
 func marshal(v reflect.Value) ([]byte, error) {
-	reflected := v
-	if reflected.Kind() == reflect.Pointer {
-		reflected = reflected.Elem()
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
 	}
-	typ := CaptureType(reflected.Type())
-	memory := alloc(0)
-	defer dealloc(memory)
-	for _, i := range typ.Fields {
-		v := reflected.FieldByIndex(i.FieldIndex)
+	typ := CaptureType(v.Type())
+	buffer := alloc(0)
+	defer dealloc(buffer)
+	for _, field := range typ.Fields {
+		v := v.FieldByIndex(field.FieldIndex)
 		if v.IsZero() {
 			continue
 		}
-		memory.Write(i.Tag)
-		if i.IsPointer {
+		if field.IsPointer {
 			v = v.Elem()
 		}
-		bytes, err := encodeValue(v, i, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType)
+		buffer.Write(field.Tag)
+		bytes, err := encodeValue(v, field, field.Kind, field.Tags.Protobuf.WireType)
 		if err != nil {
 			return nil, err
 		}
-		bytes.WriteTo(memory)
+		bytes.WriteTo(buffer)
 		dealloc(bytes)
 	}
-	return bytes.Clone(memory.Bytes()), nil
+	return bytes.Clone(buffer.Bytes()), nil
 }
 
-func encodeValue(v reflect.Value, field *Field, kind reflect.Kind, fieldNumber int, wireType WireType) (*bytes.Buffer, error) {
+func encodeValue(v reflect.Value, field *Field, kind reflect.Kind, wireType WireType) (*bytes.Buffer, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -103,101 +83,100 @@ func encodeValue(v reflect.Value, field *Field, kind reflect.Kind, fieldNumber i
 			switch wireType {
 			case WireTypeVarint, WireTypeI32, WireTypeI64:
 				{
-					data := alloc(0)
-					defer dealloc(data)
+					buffer := alloc(0)
+					defer dealloc(buffer)
 					for i := range v.Len() {
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(v, field, v.Kind(), fieldNumber, wireType)
+						value, err := encodeValue(v, field, v.Kind(), wireType)
 						if err != nil {
 							return nil, err
 						}
-						bytes.WriteTo(data)
-						dealloc(bytes)
+						value.WriteTo(buffer)
+						dealloc(value)
 					}
-					return encodeBytes(data.Bytes()), nil
+					return encodeBytes(buffer.Bytes()), nil
 				}
 			default:
 				{
-					data := alloc(0)
-					tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
+					buffer := alloc(0)
+					tag, err := encodeTag(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
 					if err != nil {
 						return nil, err
 					}
 					defer dealloc(tag)
 					for i := range v.Len() {
-						if data.Len() != 0 {
-							data.Write(tag.Bytes())
+						if buffer.Len() != 0 {
+							buffer.Write(tag.Bytes())
 						}
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(v, field, v.Kind(), fieldNumber, wireType)
+						value, err := encodeValue(v, field, v.Kind(), wireType)
 						if err != nil {
 							return nil, err
 						}
-						bytes.WriteTo(data)
-						dealloc(bytes)
+						value.WriteTo(buffer)
+						dealloc(value)
 					}
-					return data, nil
+					return buffer, nil
 				}
 			}
 
 		}
 	case reflect.Map:
 		{
-			data := alloc(0)
+			buffer := alloc(0)
 			mapRange := v.MapRange()
-			tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
+			tag, err := encodeTag(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
 			if err != nil {
 				return nil, err
 			}
 			defer dealloc(tag)
 			for mapRange.Next() {
-				if data.Len() != 0 {
-					data.Write(tag.Bytes())
+				if buffer.Len() != 0 {
+					buffer.Write(tag.Bytes())
 				}
-				keyValue := alloc(0)
+				entry := alloc(0)
 				key := mapRange.Key()
 				if key.Kind() == reflect.Pointer {
 					key = key.Elem()
 				}
-				keyValue.Write(field.KeyTag)
-				keyBytes, err := encodeValue(key, field, key.Kind(), fieldNumber, field.Tags.MapKey)
+				entry.Write(field.KeyTag)
+				keyBytes, err := encodeValue(key, field, key.Kind(), field.Tags.MapKey)
 				if err != nil {
 					return nil, err
 				}
-				keyBytes.WriteTo(keyValue)
+				keyBytes.WriteTo(entry)
 				dealloc(keyBytes)
 				value := mapRange.Value()
-				keyValue.Write(field.ValueTag)
+				entry.Write(field.ValueTag)
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}
-				valueBytes, err := encodeValue(value, field, value.Kind(), fieldNumber, field.Tags.MapValue)
+				valueBytes, err := encodeValue(value, field, value.Kind(), field.Tags.MapValue)
 				if err != nil {
 					return nil, err
 				}
-				valueBytes.WriteTo(keyValue)
+				valueBytes.WriteTo(entry)
 				dealloc(valueBytes)
-				entry := encodeBytes(keyValue.Bytes())
-				entry.WriteTo(data)
+				encodedEntry := encodeBytes(entry.Bytes())
+				encodedEntry.WriteTo(buffer)
+				dealloc(encodedEntry)
 				dealloc(entry)
-				dealloc(keyValue)
 			}
-			return data, nil
+			return buffer, nil
 		}
 	case reflect.Struct:
 		{
-			data, err := marshal(v)
+			encodedStruct, err := marshal(v)
 			if err != nil {
 				return nil, err
 			}
-			out := encodeBytes(data)
-			return out, nil
+			return encodeBytes(encodedStruct), nil
 		}
 	}
 	return nil, fmt.Errorf("unexpected type %v", kind)
