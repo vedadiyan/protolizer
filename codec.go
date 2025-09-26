@@ -26,7 +26,11 @@ func withMapWireTypes(key WireType, value WireType, keyTag []byte, valueTag []by
 }
 
 func Marshal(v any) ([]byte, error) {
-	reflected := reflect.ValueOf(v)
+	return marshal(reflect.ValueOf(v))
+}
+
+func marshal(v reflect.Value) ([]byte, error) {
+	reflected := v
 	if reflected.Kind() == reflect.Pointer {
 		reflected = reflected.Elem()
 	}
@@ -34,19 +38,15 @@ func Marshal(v any) ([]byte, error) {
 	memory := alloc(0)
 	defer dealloc(memory)
 	for _, i := range typ.Fields {
-		var opts []encodeOption
 		v := reflected.FieldByIndex(i.FieldIndex)
 		if v.IsZero() {
 			continue
 		}
-		if v.Kind() == reflect.Map {
-			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue, i.KeyTag, i.ValueTag))
-		}
 		memory.Write(i.Tag)
-		if v.Kind() == reflect.Pointer {
+		if i.IsPointer {
 			v = v.Elem()
 		}
-		bytes, err := encodeValue(&v, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType, opts...)
+		bytes, err := encodeValue(v, i, i.Kind, i.Tags.Protobuf.FieldNum, i.Tags.Protobuf.WireType)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func Marshal(v any) ([]byte, error) {
 	return bytes.Clone(memory.Bytes()), nil
 }
 
-func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) (*bytes.Buffer, error) {
+func encodeValue(v reflect.Value, field *Field, kind reflect.Kind, fieldNumber int, wireType WireType) (*bytes.Buffer, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -96,8 +96,7 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 		}
 	case reflect.Array, reflect.Slice:
 		{
-			k := v.Type().Elem().Kind()
-			if k == reflect.Uint8 {
+			if field.Index == reflect.Uint8 {
 				return encodeBytes(v.Bytes()), nil
 			}
 
@@ -106,12 +105,12 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				{
 					data := alloc(0)
 					defer dealloc(data)
-					for i := 0; i < v.Len(); i++ {
+					for i := range v.Len() {
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(&v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(v, field, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -128,7 +127,7 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						return nil, err
 					}
 					defer dealloc(tag)
-					for i := 0; i < v.Len(); i++ {
+					for i := range v.Len() {
 						if data.Len() != 0 {
 							data.Write(tag.Bytes())
 						}
@@ -136,7 +135,7 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						if v.Kind() == reflect.Pointer {
 							v = v.Elem()
 						}
-						bytes, err := encodeValue(&v, v.Kind(), fieldNumber, wireType)
+						bytes, err := encodeValue(v, field, v.Kind(), fieldNumber, wireType)
 						if err != nil {
 							return nil, err
 						}
@@ -150,10 +149,6 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 		}
 	case reflect.Map:
 		{
-			encodeOptions := new(encodeOptions)
-			for _, opt := range opts {
-				opt(encodeOptions)
-			}
 			data := alloc(0)
 			mapRange := v.MapRange()
 			tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
@@ -170,19 +165,19 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if key.Kind() == reflect.Pointer {
 					key = key.Elem()
 				}
-				keyValue.Write(encodeOptions.MapKeyTag)
-				keyBytes, err := encodeValue(&key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
+				keyValue.Write(field.KeyTag)
+				keyBytes, err := encodeValue(key, field, key.Kind(), fieldNumber, field.Tags.MapKey)
 				if err != nil {
 					return nil, err
 				}
 				keyBytes.WriteTo(keyValue)
 				dealloc(keyBytes)
 				value := mapRange.Value()
-				keyValue.Write(encodeOptions.MapValueTag)
+				keyValue.Write(field.ValueTag)
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}
-				valueBytes, err := encodeValue(&value, value.Kind(), fieldNumber, encodeOptions.MapValueWireType)
+				valueBytes, err := encodeValue(value, field, value.Kind(), fieldNumber, field.Tags.MapValue)
 				if err != nil {
 					return nil, err
 				}
@@ -197,8 +192,7 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 		}
 	case reflect.Struct:
 		{
-
-			data, err := Marshal(v.Interface())
+			data, err := marshal(v)
 			if err != nil {
 				return nil, err
 			}
