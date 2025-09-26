@@ -10,14 +10,18 @@ type (
 	encodeOptions struct {
 		MapKeyWireType   WireType
 		MapValueWireType WireType
+		MapKeyTag        []byte
+		MapValueTag      []byte
 	}
 	encodeOption func(*encodeOptions)
 )
 
-func withMapWireTypes(key WireType, value WireType) encodeOption {
+func withMapWireTypes(key WireType, value WireType, keyTag []byte, valueTag []byte) encodeOption {
 	return func(eo *encodeOptions) {
 		eo.MapKeyWireType = key
 		eo.MapValueWireType = value
+		eo.MapKeyTag = keyTag
+		eo.MapValueTag = valueTag
 	}
 }
 
@@ -35,18 +39,10 @@ func Marshal(v any) ([]byte, error) {
 		if v.IsZero() {
 			continue
 		}
-		w := i.Tags.Protobuf.WireType
 		if v.Kind() == reflect.Map {
-			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
-		} else if i.Kind == reflect.Slice {
-			w = WireTypeLen
+			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue, i.KeyTag, i.ValueTag))
 		}
-		tag, err := encodeTag(int32(i.Tags.Protobuf.FieldNum), w)
-		if err != nil {
-			return nil, err
-		}
-		tag.WriteTo(memory)
-		dealloc(tag)
+		memory.Write(i.Tag)
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
@@ -127,14 +123,14 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 			default:
 				{
 					data := alloc(0)
+					tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
+					if err != nil {
+						return nil, err
+					}
+					defer dealloc(tag)
 					for i := 0; i < v.Len(); i++ {
 						if data.Len() != 0 {
-							tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
-							if err != nil {
-								return nil, err
-							}
-							tag.WriteTo(data)
-							dealloc(tag)
+							data.Write(tag.Bytes())
 						}
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
@@ -160,26 +156,21 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 			}
 			data := alloc(0)
 			mapRange := v.MapRange()
+			tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
+			if err != nil {
+				return nil, err
+			}
+			defer dealloc(tag)
 			for mapRange.Next() {
 				if data.Len() != 0 {
-					tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
-					if err != nil {
-						return nil, err
-					}
-					tag.WriteTo(data)
-					dealloc(tag)
+					data.Write(tag.Bytes())
 				}
 				keyValue := alloc(0)
 				key := mapRange.Key()
 				if key.Kind() == reflect.Pointer {
 					key = key.Elem()
 				}
-				keyTag, err := encodeTag(1, encodeOptions.MapKeyWireType)
-				if err != nil {
-					return nil, err
-				}
-				keyTag.WriteTo(keyValue)
-				dealloc(keyTag)
+				keyValue.Write(encodeOptions.MapKeyTag)
 				keyBytes, err := encodeValue(&key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
@@ -187,12 +178,7 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				keyBytes.WriteTo(keyValue)
 				dealloc(keyBytes)
 				value := mapRange.Value()
-				valueTag, err := encodeTag(2, encodeOptions.MapValueWireType)
-				if err != nil {
-					return nil, err
-				}
-				valueTag.WriteTo(keyValue)
-				dealloc(valueTag)
+				keyValue.Write(encodeOptions.MapValueTag)
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}

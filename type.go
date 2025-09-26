@@ -1,6 +1,7 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sort"
@@ -37,6 +38,9 @@ type (
 		IsPointer  bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
 		TypeName   string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
 		Tags       *Tags        `protobuf:"bytes,10,opt,name=tags,proto3"`
+		Tag        []byte       `protobuf:"bytes,11,opt,name=tag,proto3"`
+		KeyTag     []byte       `protobuf:"bytes,12,opt,name=tag,proto3"`
+		ValueTag   []byte       `protobuf:"bytes,13,opt,name=tag,proto3"`
 	}
 
 	Type struct {
@@ -153,9 +157,37 @@ func newField(f reflect.StructField) *Field {
 	}
 	if out.IsPointer {
 		out.TypeName = TypeName(f.Type.Elem())
+	} else {
+		out.TypeName = TypeName(f.Type)
+	}
+
+	if out.Tags.Protobuf == nil {
 		return out
 	}
-	out.TypeName = TypeName(f.Type)
+	w := out.Tags.Protobuf.WireType
+	if out.Kind == reflect.Slice {
+		w = WireTypeLen
+	}
+	tag, err := encodeTag(int32(out.Tags.Protobuf.FieldNum), w)
+	if err != nil {
+		panic(err)
+	}
+	out.Tag = bytes.Clone(tag.Bytes())
+	dealloc(tag)
+
+	keyTag, err := encodeTag(int32(1), out.Tags.MapKey)
+	if err != nil {
+		panic(err)
+	}
+	out.KeyTag = bytes.Clone(keyTag.Bytes())
+	dealloc(keyTag)
+
+	valueTag, err := encodeTag(int32(2), out.Tags.MapValue)
+	if err != nil {
+		panic(err)
+	}
+	out.ValueTag = bytes.Clone(valueTag.Bytes())
+	dealloc(valueTag)
 	return out
 }
 
