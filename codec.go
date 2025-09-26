@@ -186,7 +186,7 @@ func mapEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer
 			key = key.Elem()
 		}
 		entry.Write(field.KeyTag)
-		keyBytes, err := _encoders[key.Kind()](key, field, field.Tags.MapKey)
+		keyBytes, err := _encoders[key.Kind()](key, nil, field.Tags.MapKey)
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +197,7 @@ func mapEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer
 		if value.Kind() == reflect.Pointer {
 			value = value.Elem()
 		}
-		valueBytes, err := _encoders[value.Kind()](value, field, field.Tags.MapValue)
+		valueBytes, err := _encoders[value.Kind()](value, nil, field.Tags.MapValue)
 		if err != nil {
 			return nil, err
 		}
