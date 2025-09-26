@@ -1,19 +1,20 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 )
 
-func encodeBytes(value []byte) []byte {
+func encodeBytes(value []byte) *bytes.Buffer {
 	memory := alloc(0)
-	defer dealloc(memory)
 	length := encodeVarint(int64(len(value)))
-	memory.Write(length)
+	length.WriteTo(memory)
+	dealloc(length)
 	memory.Write(value)
-	return memory.Bytes()
+	return memory
 }
 
-func encodeString(value string) []byte {
+func encodeString(value string) *bytes.Buffer {
 	return encodeBytes([]byte(value))
 }
 

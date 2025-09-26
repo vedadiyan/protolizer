@@ -1,24 +1,25 @@
 package protolizer
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
 
-func encodeFixed32(value int32) []byte {
+func encodeFixed32(value int32) *bytes.Buffer {
 	memory := alloc(4)
-	defer dealloc(memory)
 	buf := memory.AvailableBuffer()[:4]
 	binary.LittleEndian.PutUint32(buf, uint32(value))
-	return buf
+	memory.Write(buf)
+	return memory
 }
 
-func encodeFixed64(value int64) []byte {
+func encodeFixed64(value int64) *bytes.Buffer {
 	memory := alloc(8)
-	defer dealloc(memory)
 	buf := memory.AvailableBuffer()[:8]
 	binary.LittleEndian.PutUint64(buf, uint64(value))
-	return buf
+	memory.Write(buf)
+	return memory
 }
 
 func decodeFixed32(data []byte, offset int) (int32, int, error) {

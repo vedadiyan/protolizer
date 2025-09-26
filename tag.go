@@ -1,8 +1,11 @@
 package protolizer
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
-func encodeTag(fieldNumber int32, wireType WireType) ([]byte, error) {
+func encodeTag(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	if fieldNumber < 1 {
 		return nil, fmt.Errorf("field number must be positive")
 	}

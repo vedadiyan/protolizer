@@ -1,6 +1,8 @@
 package protolizer
 
-func encodeBool(value bool) []byte {
+import "bytes"
+
+func encodeBool(value bool) *bytes.Buffer {
 	if value {
 		return encodeVarint(1)
 	}

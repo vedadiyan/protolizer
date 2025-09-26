@@ -1,6 +1,7 @@
 package protobench
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -108,6 +109,9 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := protolizer.Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
+		}
+		if out.Email != m.Email {
+			b.Fatal(fmt.Errorf("bad unmarshalling"))
 		}
 	}
 }

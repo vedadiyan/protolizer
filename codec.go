@@ -1,6 +1,7 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 )
@@ -34,18 +35,18 @@ func Marshal(v any) ([]byte, error) {
 		if v.IsZero() {
 			continue
 		}
+		w := i.Tags.Protobuf.WireType
 		if v.Kind() == reflect.Map {
 			opts = append(opts, withMapWireTypes(i.Tags.MapKey, i.Tags.MapValue))
-		}
-		w := i.Tags.Protobuf.WireType
-		if i.Kind == reflect.Slice {
+		} else if i.Kind == reflect.Slice {
 			w = WireTypeLen
 		}
 		tag, err := encodeTag(int32(i.Tags.Protobuf.FieldNum), w)
 		if err != nil {
 			return nil, err
 		}
-		memory.Write(tag)
+		tag.WriteTo(memory)
+		dealloc(tag)
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
@@ -53,12 +54,13 @@ func Marshal(v any) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		memory.Write(bytes)
+		bytes.WriteTo(memory)
+		dealloc(bytes)
 	}
-	return append([]byte{}, memory.Bytes()...), nil
+	return bytes.Clone(memory.Bytes()), nil
 }
 
-func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) ([]byte, error) {
+func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType WireType, opts ...encodeOption) (*bytes.Buffer, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -117,21 +119,22 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						if err != nil {
 							return nil, err
 						}
-						data.Write(bytes)
+						bytes.WriteTo(data)
+						dealloc(bytes)
 					}
 					return encodeBytes(data.Bytes()), nil
 				}
 			default:
 				{
 					data := alloc(0)
-					defer dealloc(data)
 					for i := 0; i < v.Len(); i++ {
 						if data.Len() != 0 {
 							tag, err := encodeTag(int32(fieldNumber), WireTypeLen)
 							if err != nil {
 								return nil, err
 							}
-							data.Write(tag)
+							tag.WriteTo(data)
+							dealloc(tag)
 						}
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
@@ -141,9 +144,10 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 						if err != nil {
 							return nil, err
 						}
-						data.Write(bytes)
+						bytes.WriteTo(data)
+						dealloc(bytes)
 					}
-					return data.Bytes(), nil
+					return data, nil
 				}
 			}
 
@@ -155,7 +159,6 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				opt(encodeOptions)
 			}
 			data := alloc(0)
-			defer dealloc(data)
 			mapRange := v.MapRange()
 			for mapRange.Next() {
 				if data.Len() != 0 {
@@ -163,7 +166,8 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 					if err != nil {
 						return nil, err
 					}
-					data.Write(tag)
+					tag.WriteTo(data)
+					dealloc(tag)
 				}
 				keyValue := alloc(0)
 				key := mapRange.Key()
@@ -174,18 +178,21 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if err != nil {
 					return nil, err
 				}
-				keyValue.Write(keyTag)
+				keyTag.WriteTo(keyValue)
+				dealloc(keyTag)
 				keyBytes, err := encodeValue(&key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
 				}
-				keyValue.Write(keyBytes)
+				keyBytes.WriteTo(keyValue)
+				dealloc(keyBytes)
 				value := mapRange.Value()
 				valueTag, err := encodeTag(2, encodeOptions.MapValueWireType)
 				if err != nil {
 					return nil, err
 				}
-				keyValue.Write(valueTag)
+				valueTag.WriteTo(keyValue)
+				dealloc(valueTag)
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}
@@ -193,12 +200,14 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if err != nil {
 					return nil, err
 				}
-				keyValue.Write(valueBytes)
+				valueBytes.WriteTo(keyValue)
+				dealloc(valueBytes)
 				entry := encodeBytes(keyValue.Bytes())
+				entry.WriteTo(data)
+				dealloc(entry)
 				dealloc(keyValue)
-				data.Write(entry)
 			}
-			return data.Bytes(), nil
+			return data, nil
 		}
 	case reflect.Struct:
 		{
