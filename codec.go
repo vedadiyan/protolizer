@@ -156,7 +156,7 @@ func arrayEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buff
 				if v.Kind() == reflect.Pointer {
 					v = v.Elem()
 				}
-				value, err := _encoders[v.Kind()](v, field, wireType)
+				value, err := _encoders[v.Kind()](v, nil, wireType)
 				if err != nil {
 					return nil, err
 				}
