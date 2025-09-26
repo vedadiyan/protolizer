@@ -11,12 +11,16 @@ func encodeVarint(value int64) *bytes.Buffer {
 
 func encodeUvarint(value uint64) *bytes.Buffer {
 	memory := alloc(0)
+	encodeUvarintToBuffer(value, memory)
+	return memory
+}
+
+func encodeUvarintToBuffer(value uint64, buffer *bytes.Buffer) {
 	for value >= 0x80 {
-		memory.WriteByte(byte(value) | 0x80)
+		buffer.WriteByte(byte(value) | 0x80)
 		value >>= 7
 	}
-	memory.WriteByte(byte(value))
-	return memory
+	buffer.WriteByte(byte(value))
 }
 
 func decodeVarint(data []byte, offset int) (int64, int, error) {
