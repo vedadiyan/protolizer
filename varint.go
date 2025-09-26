@@ -7,13 +7,14 @@ func encodeVarint(value int64) []byte {
 }
 
 func encodeUvarint(value uint64) []byte {
-	var result []byte
+	memory := alloc(8)
+	defer dealloc(memory)
 	for value >= 0x80 {
-		result = append(result, byte(value)|0x80)
+		memory.WriteByte(byte(value) | 0x80)
 		value >>= 7
 	}
-	result = append(result, byte(value))
-	return result
+	memory.WriteByte(byte(value))
+	return memory.Bytes()
 }
 
 func decodeVarint(data []byte, offset int) (int64, int, error) {

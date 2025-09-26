@@ -7,14 +7,18 @@ import (
 )
 
 func encodeFloat32(value float32) []byte {
-	buf := make([]byte, 4)
+	memory := alloc(4)
+	defer dealloc(memory)
+	buf := memory.AvailableBuffer()[:4]
 	bits := math.Float32bits(value)
 	binary.LittleEndian.PutUint32(buf, bits)
 	return buf
 }
 
 func encodeFloat64(value float64) []byte {
-	buf := make([]byte, 8)
+	memory := alloc(8)
+	defer dealloc(memory)
+	buf := memory.AvailableBuffer()[:8]
 	bits := math.Float64bits(value)
 	binary.LittleEndian.PutUint64(buf, bits)
 	return buf

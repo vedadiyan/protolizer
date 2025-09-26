@@ -6,13 +6,17 @@ import (
 )
 
 func encodeFixed32(value int32) []byte {
-	buf := make([]byte, 4)
+	memory := alloc(4)
+	defer dealloc(memory)
+	buf := memory.AvailableBuffer()[:4]
 	binary.LittleEndian.PutUint32(buf, uint32(value))
 	return buf
 }
 
 func encodeFixed64(value int64) []byte {
-	buf := make([]byte, 8)
+	memory := alloc(8)
+	defer dealloc(memory)
+	buf := memory.AvailableBuffer()[:8]
 	binary.LittleEndian.PutUint64(buf, uint64(value))
 	return buf
 }

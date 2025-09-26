@@ -5,8 +5,12 @@ import (
 )
 
 func encodeBytes(value []byte) []byte {
+	memory := alloc(0)
+	defer dealloc(memory)
 	length := encodeVarint(int64(len(value)))
-	return append(length, value...)
+	memory.Write(length)
+	memory.Write(value)
+	return memory.Bytes()
 }
 
 func encodeString(value string) []byte {
