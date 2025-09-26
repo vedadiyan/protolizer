@@ -10,7 +10,7 @@ func encodeVarint(value int64) *bytes.Buffer {
 }
 
 func encodeUvarint(value uint64) *bytes.Buffer {
-	memory := alloc(8)
+	memory := alloc(0)
 	for value >= 0x80 {
 		memory.WriteByte(byte(value) | 0x80)
 		value >>= 7

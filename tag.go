@@ -1,20 +1,19 @@
 package protolizer
 
 import (
-	"bytes"
 	"fmt"
 )
 
-func encodeTag(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
+func encodeTag(fieldNumber int32, wireType WireType) (byte, error) {
 	if fieldNumber < 1 {
-		return nil, fmt.Errorf("field number must be positive")
+		return 0, fmt.Errorf("field number must be positive")
 	}
 	if wireType > 5 {
-		return nil, fmt.Errorf("invalid wire type")
+		return 0, fmt.Errorf("invalid wire type")
 	}
 
 	tag := (int64(fieldNumber) << 3) | int64(wireType)
-	return encodeVarint(tag), nil
+	return byte(tag), nil
 }
 
 func decodeTag(data []byte, offset int) (int32, WireType, int, error) {
