@@ -45,7 +45,8 @@ func Marshal(v any) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		memory.WriteByte(tag)
+		tag.WriteTo(memory)
+		dealloc(tag)
 		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
@@ -132,7 +133,8 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 							if err != nil {
 								return nil, err
 							}
-							data.WriteByte(tag)
+							tag.WriteTo(data)
+							dealloc(tag)
 						}
 						v := v.Index(i)
 						if v.Kind() == reflect.Pointer {
@@ -164,7 +166,8 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 					if err != nil {
 						return nil, err
 					}
-					data.WriteByte(tag)
+					tag.WriteTo(data)
+					dealloc(tag)
 				}
 				keyValue := alloc(0)
 				key := mapRange.Key()
@@ -175,8 +178,8 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if err != nil {
 					return nil, err
 				}
-				keyValue.WriteByte(keyTag)
-
+				keyTag.WriteTo(keyValue)
+				dealloc(keyTag)
 				keyBytes, err := encodeValue(&key, key.Kind(), fieldNumber, encodeOptions.MapKeyWireType)
 				if err != nil {
 					return nil, err
@@ -188,7 +191,8 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				if err != nil {
 					return nil, err
 				}
-				keyValue.WriteByte(valueTag)
+				valueTag.WriteTo(keyValue)
+				dealloc(valueTag)
 				if value.Kind() == reflect.Pointer {
 					value = value.Elem()
 				}
@@ -199,9 +203,9 @@ func encodeValue(v *reflect.Value, kind reflect.Kind, fieldNumber int, wireType 
 				valueBytes.WriteTo(keyValue)
 				dealloc(valueBytes)
 				entry := encodeBytes(keyValue.Bytes())
-				dealloc(keyValue)
 				entry.WriteTo(data)
 				dealloc(entry)
+				dealloc(keyValue)
 			}
 			return data, nil
 		}
