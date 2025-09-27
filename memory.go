@@ -20,7 +20,6 @@ func init() {
 func alloc(size int) *bytes.Buffer {
 	buffer := _pool.Get().(*bytes.Buffer)
 	if size != 0 && buffer.Cap() < size {
-		buffer.Reset()
 		buffer.Grow(size)
 	}
 	return buffer

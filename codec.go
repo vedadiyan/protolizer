@@ -55,13 +55,16 @@ func marshal(v reflect.Value) ([]byte, error) {
 		if field.IsPointer {
 			v = v.Elem()
 		}
-		buffer.Write(field.Tag)
+		_, _ = buffer.Write(field.Tag)
 		bytes, err := _encoders[field.Kind](v, field, field.Tags.Protobuf.WireType)
 		if err != nil {
 			return nil, err
 		}
-		bytes.WriteTo(buffer)
+		_, err = bytes.WriteTo(buffer)
 		dealloc(bytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return bytes.Clone(buffer.Bytes()), nil
 }
@@ -135,8 +138,11 @@ func arrayEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buff
 				if err != nil {
 					return nil, err
 				}
-				value.WriteTo(buffer)
+				_, err = value.WriteTo(buffer)
 				dealloc(value)
+				if err != nil {
+					return nil, err
+				}
 			}
 			return bytesEncode(buffer.Bytes()), nil
 		}
@@ -150,7 +156,7 @@ func arrayEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buff
 			defer dealloc(tag)
 			for i := range v.Len() {
 				if buffer.Len() != 0 {
-					buffer.Write(tag.Bytes())
+					_, _ = buffer.Write(tag.Bytes())
 				}
 				v := v.Index(i)
 				if v.Kind() == reflect.Pointer {
@@ -160,8 +166,11 @@ func arrayEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buff
 				if err != nil {
 					return nil, err
 				}
-				value.WriteTo(buffer)
+				_, err = value.WriteTo(buffer)
 				dealloc(value)
+				if err != nil {
+					return nil, err
+				}
 			}
 			return buffer, nil
 		}
@@ -178,22 +187,25 @@ func mapEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer
 	defer dealloc(tag)
 	for mapRange.Next() {
 		if buffer.Len() != 0 {
-			buffer.Write(tag.Bytes())
+			_, _ = buffer.Write(tag.Bytes())
 		}
 		entry := alloc(0)
 		key := mapRange.Key()
 		if key.Kind() == reflect.Pointer {
 			key = key.Elem()
 		}
-		entry.Write(field.KeyTag)
+		_, _ = entry.Write(field.KeyTag)
 		keyBytes, err := _encoders[key.Kind()](key, nil, field.Tags.MapKey)
 		if err != nil {
 			return nil, err
 		}
-		keyBytes.WriteTo(entry)
+		_, err = keyBytes.WriteTo(entry)
 		dealloc(keyBytes)
+		if err != nil {
+			return nil, err
+		}
 		value := mapRange.Value()
-		entry.Write(field.ValueTag)
+		_, _ = entry.Write(field.ValueTag)
 		if value.Kind() == reflect.Pointer {
 			value = value.Elem()
 		}
@@ -201,11 +213,17 @@ func mapEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer
 		if err != nil {
 			return nil, err
 		}
-		valueBytes.WriteTo(entry)
+		_, err = valueBytes.WriteTo(entry)
 		dealloc(valueBytes)
+		if err != nil {
+			return nil, err
+		}
 		encodedEntry := bytesEncode(entry.Bytes())
-		encodedEntry.WriteTo(buffer)
+		_, err = encodedEntry.WriteTo(buffer)
 		dealloc(encodedEntry)
+		if err != nil {
+			return nil, err
+		}
 		dealloc(entry)
 	}
 	return buffer, nil
