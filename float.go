@@ -25,20 +25,20 @@ func float46Encode(value float64) *bytes.Buffer {
 	return memory
 }
 
-func float32Decode(data []byte, offset int) (float32, int, error) {
-	if len(data) < offset+4 {
+func float32Decode(data *bytes.Buffer, offset int) (float32, int, error) {
+	if data.Len() < offset+4 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float32")
 	}
-	bits := binary.LittleEndian.Uint32(data[offset : offset+4])
+	bits := binary.LittleEndian.Uint32(data.Bytes()[offset : offset+4])
 	value := math.Float32frombits(bits)
 	return value, 4, nil
 }
 
-func float64Decode(data []byte, offset int) (float64, int, error) {
-	if len(data) < offset+8 {
+func float64Decode(data *bytes.Buffer, offset int) (float64, int, error) {
+	if data.Len() < offset+8 {
 		return 0, 0, fmt.Errorf("insufficient bytes for float64")
 	}
-	bits := binary.LittleEndian.Uint64(data[offset : offset+8])
+	bits := binary.LittleEndian.Uint64(data.Bytes()[offset : offset+8])
 	value := math.Float64frombits(bits)
 	return value, 8, nil
 }

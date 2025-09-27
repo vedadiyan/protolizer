@@ -23,18 +23,18 @@ func uvarint(value uint64, buffer *bytes.Buffer) {
 	buffer.WriteByte(byte(value))
 }
 
-func varintDecode(data []byte, offset int) (int64, int, error) {
+func varintDecode(data *bytes.Buffer, offset int) (int64, int, error) {
 	value, consumed, err := uvarintDecode(data, offset)
 	return int64(value), consumed, err
 }
 
-func uvarintDecode(data []byte, offset int) (uint64, int, error) {
+func uvarintDecode(data *bytes.Buffer, offset int) (uint64, int, error) {
 	var result uint64
 	var shift uint
 	pos := offset
 
-	for pos < len(data) {
-		b := data[pos]
+	for pos < data.Len() {
+		b := data.Bytes()[pos]
 		if shift == 63 && b > 1 {
 			return 0, 0, fmt.Errorf("varint overflows uint64")
 		}

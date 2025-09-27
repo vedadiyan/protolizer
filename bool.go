@@ -9,7 +9,7 @@ func boolEncode(value bool) *bytes.Buffer {
 	return varintEncode(0)
 }
 
-func boolDecode(data []byte, offset int) (bool, int, error) {
+func boolDecode(data *bytes.Buffer, offset int) (bool, int, error) {
 	value, consumed, err := varintDecode(data, offset)
 	if err != nil {
 		return false, 0, err

@@ -16,7 +16,7 @@ func stringEncode(value string) *bytes.Buffer {
 	return bytesEncode([]byte(value))
 }
 
-func bytesDecode(data []byte, offset int) ([]byte, int, error) {
+func bytesDecode(data *bytes.Buffer, offset int) (*bytes.Buffer, int, error) {
 	length, lengthSize, err := varintDecode(data, offset)
 	if err != nil {
 		return nil, 0, err
@@ -29,19 +29,19 @@ func bytesDecode(data []byte, offset int) ([]byte, int, error) {
 	start := offset + lengthSize
 	end := start + int(length)
 
-	if len(data) < end {
+	if data.Len() < end {
 		return nil, 0, fmt.Errorf("insufficient bytes for length-prefixed data")
 	}
-
-	value := make([]byte, length)
-	copy(value, data[start:end])
-	return value, lengthSize + int(length), nil
+	buffer := alloc(0)
+	buffer.Write(data.Bytes()[start:end])
+	return buffer, lengthSize + int(length), nil
 }
 
-func stringDecode(data []byte, offset int) (string, int, error) {
+func stringDecode(data *bytes.Buffer, offset int) (string, int, error) {
 	bytes, consumed, err := bytesDecode(data, offset)
+	defer dealloc(bytes)
 	if err != nil {
 		return "", 0, err
 	}
-	return string(bytes), consumed, nil
+	return bytes.String(), consumed, nil
 }

@@ -17,7 +17,7 @@ func tagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	return varintEncode(tag), nil
 }
 
-func tagDecode(data []byte, offset int) (int32, WireType, int, error) {
+func tagDecode(data *bytes.Buffer, offset int) (int32, WireType, int, error) {
 	tag, consumed, err := varintDecode(data, offset)
 	if err != nil {
 		return 0, 0, 0, err
