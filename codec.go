@@ -81,7 +81,7 @@ func signedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*byt
 		}
 	default:
 		{
-			return varintEncode(v.Int()), nil
+			return zigzagEncode(v.Int()), nil
 		}
 	}
 }
@@ -238,19 +238,19 @@ func structEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buf
 }
 
 func Unmarshal(bytes []byte, v any) error {
+	reflected := reflect.ValueOf(v)
 	buffer := alloc(0)
 	buffer.Write(bytes)
 	defer dealloc(buffer)
-	return unmarshal(buffer, v)
+	return unmarshal(buffer, reflected)
 }
 
-func unmarshal(bytes *bytes.Buffer, v any) error {
-	reflected := reflect.ValueOf(v)
-	if reflected.Kind() == reflect.Pointer {
-		reflected = reflected.Elem()
+func unmarshal(bytes *bytes.Buffer, v reflect.Value) error {
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
 	}
 
-	typ := CaptureType(reflected.Type())
+	typ := CaptureType(v.Type())
 	pos := 0
 	for pos < bytes.Len() {
 		fieldNum, _, consumed, err := tagDecode(bytes, pos)
@@ -262,8 +262,8 @@ func unmarshal(bytes *bytes.Buffer, v any) error {
 		if !ok {
 			continue
 		}
-		v := reflected.FieldByIndex(field.FieldIndex)
-		consumed, err = decodeValue(v, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
+		v := v.FieldByIndex(field.FieldIndex)
+		consumed, err = decodeValue(v, field, field.Kind, bytes, field.Tags.Protobuf.WireType, pos)
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func unmarshal(bytes *bytes.Buffer, v any) error {
 	return nil
 }
 
-func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireType WireType, pos int) (int, error) {
+func decodeValue(v reflect.Value, field *Field, kind reflect.Kind, bytes *bytes.Buffer, wireType WireType, pos int) (int, error) {
 	switch kind {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
 		{
@@ -293,7 +293,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 				elem.SetInt(value)
 				return pos + consumed, nil
 			}
-			value, consumed, err := varintDecode(bytes, pos)
+			value, consumed, err := zigzagDecode(bytes, pos)
 			if err != nil {
 				return pos, err
 			}
@@ -368,7 +368,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 		}
 	case reflect.Array, reflect.Slice:
 		{
-			k := v.Type().Elem().Kind()
+			k := field.Index
 			if k == reflect.Uint8 {
 				value, consumed, err := bytesDecode(bytes, pos)
 				if err != nil {
@@ -377,9 +377,6 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 				v.SetBytes(append([]byte{}, value.Bytes()...))
 				dealloc(value)
 				return pos + consumed, nil
-			}
-			if v.IsZero() {
-				v.Set(reflect.MakeSlice(v.Type(), 0, 0))
 			}
 			tmp := reflect.New(v.Type().Elem())
 			tmp = tmp.Elem()
@@ -393,7 +390,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 					innerPos := 0
 					for innerPos < value.Len() {
 						elem, addr := dereference(tmp)
-						consumed, err := decodeValue(elem, elem.Kind(), value, wireType, innerPos)
+						consumed, err := decodeValue(elem, nil, elem.Kind(), value, wireType, innerPos)
 						if err != nil {
 							return pos, err
 						}
@@ -406,7 +403,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 			default:
 				{
 					elem, addr := dereference(tmp)
-					consumed, err := decodeValue(elem, elem.Kind(), bytes, wireType, pos)
+					consumed, err := decodeValue(elem, nil, elem.Kind(), bytes, wireType, pos)
 					if err != nil {
 						return pos, err
 					}
@@ -433,7 +430,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 			}
 			innerPos += consumed
 			key := reflect.New(keyType).Elem()
-			consumed, err = decodeValue(key, key.Kind(), value, keyWireType, innerPos)
+			consumed, err = decodeValue(key, nil, key.Kind(), value, keyWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
@@ -446,7 +443,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 			innerPos += consumed
 			val := reflect.New(valueType).Elem()
 			elem, addr := dereference(val)
-			_, err = decodeValue(elem, elem.Kind(), value, valueWireType, innerPos)
+			_, err = decodeValue(elem, nil, elem.Kind(), value, valueWireType, innerPos)
 			if err != nil {
 				return pos, err
 			}
@@ -461,7 +458,7 @@ func decodeValue(v reflect.Value, kind reflect.Kind, bytes *bytes.Buffer, wireTy
 			if err != nil {
 				return pos, err
 			}
-			if err := unmarshal(value, elem.Addr().Interface()); err != nil {
+			if err := unmarshal(value, elem); err != nil {
 				return c, err
 			}
 			dealloc(value)
