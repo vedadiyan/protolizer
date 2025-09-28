@@ -17,18 +17,18 @@ func tagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	return varintEncode(tag), nil
 }
 
-func tagDecode(data *bytes.Buffer, offset int) (int32, WireType, int, error) {
-	tag, consumed, err := varintDecode(data, offset)
+func tagDecode(data *bytes.Buffer) (int32, WireType, error) {
+	tag, err := varintDecode(data)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, err
 	}
 
 	fieldNumber := int32(tag >> 3)
 	wireType := WireType(tag & 0x7)
 
 	if fieldNumber < 1 {
-		return 0, 0, 0, fmt.Errorf("invalid field number")
+		return 0, 0, fmt.Errorf("invalid field number")
 	}
 
-	return fieldNumber, wireType, consumed, nil
+	return fieldNumber, wireType, nil
 }

@@ -23,29 +23,27 @@ func uvarint(value uint64, buffer *bytes.Buffer) {
 	buffer.WriteByte(byte(value))
 }
 
-func varintDecode(data *bytes.Buffer, offset int) (int64, int, error) {
-	value, consumed, err := uvarintDecode(data, offset)
-	return int64(value), consumed, err
+func varintDecode(data *bytes.Buffer) (int64, error) {
+	value, err := uvarintDecode(data)
+	return int64(value), err
 }
 
-func uvarintDecode(data *bytes.Buffer, offset int) (uint64, int, error) {
+func uvarintDecode(data *bytes.Buffer) (uint64, error) {
 	var result uint64
 	var shift uint
-	pos := offset
 
-	for pos < data.Len() {
-		b := data.Bytes()[pos]
+	for data.Len() != 0 {
+		b, _ := data.ReadByte()
 		if shift == 63 && b > 1 {
-			return 0, 0, fmt.Errorf("varint overflows uint64")
+			return 0, fmt.Errorf("varint overflows uint64")
 		}
 		result |= uint64(b&0x7f) << shift
-		pos++
 
 		if b&0x80 == 0 {
-			return result, pos - offset, nil
+			return result, nil
 		}
 
 		shift += 7
 	}
-	return 0, 0, fmt.Errorf("truncated varint")
+	return 0, fmt.Errorf("truncated varint")
 }

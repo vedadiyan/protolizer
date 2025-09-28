@@ -22,18 +22,18 @@ func fixed64Encode(value int64) *bytes.Buffer {
 	return memory
 }
 
-func fixed32Decode(data *bytes.Buffer, offset int) (int32, int, error) {
-	if data.Len() < offset+4 {
-		return 0, 0, fmt.Errorf("insufficient bytes for fixed32")
+func fixed32Decode(data *bytes.Buffer) (int32, error) {
+	if data.Len() < 4 {
+		return 0, fmt.Errorf("insufficient bytes for fixed32")
 	}
-	value := binary.LittleEndian.Uint32(data.Bytes()[offset : offset+4])
-	return int32(value), 4, nil
+	value := binary.LittleEndian.Uint32(data.Next(4))
+	return int32(value), nil
 }
 
-func fixed64Decode(data *bytes.Buffer, offset int) (int64, int, error) {
-	if data.Len() < offset+8 {
-		return 0, 0, fmt.Errorf("insufficient bytes for fixed64")
+func fixed64Decode(data *bytes.Buffer) (int64, error) {
+	if data.Len() < 8 {
+		return 0, fmt.Errorf("insufficient bytes for fixed64")
 	}
-	value := binary.LittleEndian.Uint64(data.Bytes()[offset : offset+8])
-	return int64(value), 8, nil
+	value := binary.LittleEndian.Uint64(data.Next(8))
+	return int64(value), nil
 }

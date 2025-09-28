@@ -7,11 +7,11 @@ func zigzagEncode(value int64) *bytes.Buffer {
 	return uvarintEncode(encoded)
 }
 
-func zigzagDecode(data *bytes.Buffer, offset int) (int64, int, error) {
-	encoded, consumed, err := uvarintDecode(data, offset)
+func zigzagDecode(data *bytes.Buffer) (int64, error) {
+	encoded, err := uvarintDecode(data)
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 	value := int64((encoded >> 1) ^ uint64((int64(encoded&1)<<63)>>63))
-	return value, consumed, nil
+	return value, nil
 }
