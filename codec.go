@@ -272,8 +272,7 @@ func unmarshal(bytes *bytes.Buffer, v reflect.Value) error {
 	}
 
 	typ := CaptureType(v.Type())
-	pos := 0
-	for pos < bytes.Len() {
+	for bytes.Len() != 0 {
 		fieldNum, _, err := tagDecode(bytes)
 		if err != nil {
 			return err
