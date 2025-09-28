@@ -452,8 +452,9 @@ func mapDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType Wir
 	defer dealloc(buffer)
 	_, _ = buffer.Write(value)
 
-	keyType := v.Type().Key()
-	valueType := v.Type().Elem()
+	typ := v.Type()
+	keyType := typ.Key()
+	valueType := typ.Elem()
 	if v.IsZero() {
 		v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 	}
