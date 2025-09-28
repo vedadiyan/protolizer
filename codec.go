@@ -417,6 +417,7 @@ func arrayDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType W
 				return err
 			}
 			buffer := alloc(0)
+			defer dealloc(buffer)
 			_, _ = buffer.Write(value)
 			for buffer.Len() != 0 {
 				elem, addr := dereference(tmp)
@@ -426,7 +427,6 @@ func arrayDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType W
 				}
 				v.Set(reflect.Append(v, addr))
 			}
-			dealloc(buffer)
 			return nil
 		}
 	default:
@@ -449,6 +449,7 @@ func mapDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType Wir
 	}
 
 	buffer := alloc(0)
+	defer dealloc(buffer)
 	_, _ = buffer.Write(value)
 
 	keyType := v.Type().Key()
@@ -477,7 +478,6 @@ func mapDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType Wir
 		return err
 	}
 	v.SetMapIndex(key, addr)
-	dealloc(buffer)
 	return nil
 }
 
@@ -488,10 +488,10 @@ func structDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType 
 		return err
 	}
 	buffer := alloc(0)
+	defer dealloc(buffer)
 	_, _ = buffer.Write(value)
 	if err := unmarshal(buffer, elem); err != nil {
 		return err
 	}
-	dealloc(buffer)
 	return nil
 }
