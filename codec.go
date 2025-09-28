@@ -404,8 +404,7 @@ func arrayDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType W
 		if err != nil {
 			return err
 		}
-		v.SetBytes(append([]byte{}, value.Bytes()...))
-		dealloc(value)
+		v.SetBytes(value)
 		return nil
 	}
 	tmp := reflect.New(v.Type().Elem())
@@ -417,16 +416,17 @@ func arrayDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType W
 			if err != nil {
 				return err
 			}
-			innerPos := 0
-			for innerPos < value.Len() {
+			buffer := alloc(0)
+			_, _ = buffer.Write(value)
+			for buffer.Len() != 0 {
 				elem, addr := dereference(tmp)
-				err := _decoders[elem.Kind()](elem, nil, value, wireType)
+				err := _decoders[elem.Kind()](elem, nil, buffer, wireType)
 				if err != nil {
 					return err
 				}
 				v.Set(reflect.Append(v, addr))
 			}
-			dealloc(value)
+			dealloc(buffer)
 			return nil
 		}
 	default:
@@ -447,33 +447,37 @@ func mapDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType Wir
 	if err != nil {
 		return err
 	}
+
+	buffer := alloc(0)
+	_, _ = buffer.Write(value)
+
 	keyType := v.Type().Key()
 	valueType := v.Type().Elem()
 	if v.IsZero() {
 		v.Set(reflect.MakeMap(reflect.MapOf(keyType, valueType)))
 	}
-	_, keyWireType, err := tagDecode(value)
+	_, keyWireType, err := tagDecode(buffer)
 	if err != nil {
 		return err
 	}
 	key := reflect.New(keyType).Elem()
-	err = _decoders[key.Kind()](key, nil, value, keyWireType)
+	err = _decoders[key.Kind()](key, nil, buffer, keyWireType)
 	if err != nil {
 		return err
 	}
 
-	_, valueWireType, err := tagDecode(value)
+	_, valueWireType, err := tagDecode(buffer)
 	if err != nil {
 		return err
 	}
 	val := reflect.New(valueType).Elem()
 	elem, addr := dereference(val)
-	err = _decoders[elem.Kind()](elem, nil, value, valueWireType)
+	err = _decoders[elem.Kind()](elem, nil, buffer, valueWireType)
 	if err != nil {
 		return err
 	}
 	v.SetMapIndex(key, addr)
-	dealloc(value)
+	dealloc(buffer)
 	return nil
 }
 
@@ -483,9 +487,11 @@ func structDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType 
 	if err != nil {
 		return err
 	}
-	if err := unmarshal(value, elem); err != nil {
+	buffer := alloc(0)
+	_, _ = buffer.Write(value)
+	if err := unmarshal(buffer, elem); err != nil {
 		return err
 	}
-	dealloc(value)
+	dealloc(buffer)
 	return nil
 }

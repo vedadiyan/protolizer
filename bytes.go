@@ -16,7 +16,7 @@ func stringEncode(value string) *bytes.Buffer {
 	return bytesEncode([]byte(value))
 }
 
-func bytesDecode(data *bytes.Buffer) (*bytes.Buffer, error) {
+func bytesDecode(data *bytes.Buffer) ([]byte, error) {
 	length, err := varintDecode(data)
 	if err != nil {
 		return nil, err
@@ -29,16 +29,13 @@ func bytesDecode(data *bytes.Buffer) (*bytes.Buffer, error) {
 	if data.Len() < int(length) {
 		return nil, fmt.Errorf("insufficient bytes for length-prefixed data")
 	}
-	buffer := alloc(0)
-	buffer.Write(data.Next(int(length)))
-	return buffer, nil
+	return data.Next(int(length)), nil
 }
 
 func stringDecode(data *bytes.Buffer) (string, error) {
 	bytes, err := bytesDecode(data)
-	defer dealloc(bytes)
 	if err != nil {
 		return "", err
 	}
-	return bytes.String(), nil
+	return string(bytes), nil
 }
