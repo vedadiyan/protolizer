@@ -2,13 +2,13 @@ package protolizer
 
 import "bytes"
 
-func zigzagEncode(value int64) *bytes.Buffer {
+func ZigzagEncode(value int64) *bytes.Buffer {
 	encoded := uint64((value << 1) ^ (value >> 63))
-	return uvarintEncode(encoded)
+	return UvarintEncode(encoded)
 }
 
-func zigzagDecode(data *bytes.Buffer) (int64, error) {
-	encoded, err := uvarintDecode(data)
+func ZigzagDecode(data *bytes.Buffer) (int64, error) {
+	encoded, err := UvarintDecode(data)
 	if err != nil {
 		return 0, err
 	}

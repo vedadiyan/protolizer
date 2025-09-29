@@ -168,26 +168,26 @@ func newField(f reflect.StructField) *Field {
 	if out.Kind == reflect.Slice {
 		w = WireTypeLen
 	}
-	tag, err := tagEncode(int32(out.Tags.Protobuf.FieldNum), w)
+	tag, err := TagEncode(int32(out.Tags.Protobuf.FieldNum), w)
 	if err != nil {
 		panic(err)
 	}
 	out.Tag = bytes.Clone(tag.Bytes())
-	dealloc(tag)
+	Dealloc(tag)
 
-	keyTag, err := tagEncode(int32(1), out.Tags.MapKey)
+	keyTag, err := TagEncode(int32(1), out.Tags.MapKey)
 	if err != nil {
 		panic(err)
 	}
 	out.KeyTag = bytes.Clone(keyTag.Bytes())
-	dealloc(keyTag)
+	Dealloc(keyTag)
 
-	valueTag, err := tagEncode(int32(2), out.Tags.MapValue)
+	valueTag, err := TagEncode(int32(2), out.Tags.MapValue)
 	if err != nil {
 		panic(err)
 	}
 	out.ValueTag = bytes.Clone(valueTag.Bytes())
-	dealloc(valueTag)
+	Dealloc(valueTag)
 	return out
 }
 

@@ -3,9 +3,10 @@ package protolizer
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
-func tagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
+func TagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	if fieldNumber < 1 {
 		return nil, fmt.Errorf("field number must be positive")
 	}
@@ -14,11 +15,11 @@ func tagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	}
 
 	tag := (int64(fieldNumber) << 3) | int64(wireType)
-	return varintEncode(tag), nil
+	return VarintEncode(tag), nil
 }
 
-func tagDecode(data *bytes.Buffer) (int32, WireType, error) {
-	tag, err := varintDecode(data)
+func TagDecode(data *bytes.Buffer) (int32, WireType, error) {
+	tag, err := VarintDecode(data)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -31,4 +32,23 @@ func tagDecode(data *bytes.Buffer) (int32, WireType, error) {
 	}
 
 	return fieldNumber, wireType, nil
+}
+
+func TagPeek(data *bytes.Buffer) (int32, WireType, func(), error) {
+	if data.Len() == 0 {
+		return 0, 0, nil, io.EOF
+	}
+	tag, err := UvarintPeek(data)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	fieldNumber := int32(tag >> 3)
+	wireType := WireType(tag & 0x7)
+
+	if fieldNumber < 1 {
+		return 0, 0, nil, fmt.Errorf("invalid field number")
+	}
+
+	return fieldNumber, wireType, func() { TagDecode(data) }, nil
 }

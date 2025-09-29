@@ -17,7 +17,7 @@ func init() {
 	}
 }
 
-func alloc(size int) *bytes.Buffer {
+func Alloc(size int) *bytes.Buffer {
 	buffer := _pool.Get().(*bytes.Buffer)
 	if size != 0 && buffer.Cap() < size {
 		buffer.Grow(size)
@@ -25,7 +25,7 @@ func alloc(size int) *bytes.Buffer {
 	return buffer
 }
 
-func dealloc(buffer *bytes.Buffer) {
+func Dealloc(buffer *bytes.Buffer) {
 	buffer.Reset()
 	_pool.Put(buffer)
 }

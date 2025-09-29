@@ -7,8 +7,8 @@ import (
 	"math"
 )
 
-func float32Encode(value float32) *bytes.Buffer {
-	memory := alloc(4)
+func Float32Encode(value float32) *bytes.Buffer {
+	memory := Alloc(4)
 	buf := memory.AvailableBuffer()[:4]
 	bits := math.Float32bits(value)
 	binary.LittleEndian.PutUint32(buf, bits)
@@ -16,8 +16,8 @@ func float32Encode(value float32) *bytes.Buffer {
 	return memory
 }
 
-func float46Encode(value float64) *bytes.Buffer {
-	memory := alloc(8)
+func Float46Encode(value float64) *bytes.Buffer {
+	memory := Alloc(8)
 	buf := memory.AvailableBuffer()[:8]
 	bits := math.Float64bits(value)
 	binary.LittleEndian.PutUint64(buf, bits)
@@ -25,7 +25,7 @@ func float46Encode(value float64) *bytes.Buffer {
 	return memory
 }
 
-func float32Decode(data *bytes.Buffer) (float32, error) {
+func Float32Decode(data *bytes.Buffer) (float32, error) {
 	if data.Len() < 4 {
 		return 0, fmt.Errorf("insufficient bytes for float32")
 	}
@@ -34,7 +34,7 @@ func float32Decode(data *bytes.Buffer) (float32, error) {
 	return value, nil
 }
 
-func float64Decode(data *bytes.Buffer) (float64, error) {
+func Float64Decode(data *bytes.Buffer) (float64, error) {
 	if data.Len() < 8 {
 		return 0, fmt.Errorf("insufficient bytes for float64")
 	}

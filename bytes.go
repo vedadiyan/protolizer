@@ -5,19 +5,19 @@ import (
 	"fmt"
 )
 
-func bytesEncode(value []byte) *bytes.Buffer {
-	memory := alloc(0)
+func BytesEncode(value []byte) *bytes.Buffer {
+	memory := Alloc(0)
 	uvarint(uint64(len(value)), memory)
 	memory.Write(value)
 	return memory
 }
 
-func stringEncode(value string) *bytes.Buffer {
-	return bytesEncode([]byte(value))
+func StringEncode(value string) *bytes.Buffer {
+	return BytesEncode([]byte(value))
 }
 
-func bytesDecode(data *bytes.Buffer) ([]byte, error) {
-	length, err := varintDecode(data)
+func BytesDecode(data *bytes.Buffer) ([]byte, error) {
+	length, err := VarintDecode(data)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +32,8 @@ func bytesDecode(data *bytes.Buffer) ([]byte, error) {
 	return data.Next(int(length)), nil
 }
 
-func stringDecode(data *bytes.Buffer) (string, error) {
-	bytes, err := bytesDecode(data)
+func StringDecode(data *bytes.Buffer) (string, error) {
+	bytes, err := BytesDecode(data)
 	if err != nil {
 		return "", err
 	}
