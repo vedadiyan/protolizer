@@ -536,5 +536,5 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 }
 
 func (c *ComplexMessage) Type() protolizer.Type {
-	return *protolizer.CaptureTypeFor[ComplexMessage]()
+	return *protolizer.CaptureTypeByName("protobench.ComplexMessage")
 }
