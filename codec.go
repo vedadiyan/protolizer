@@ -90,8 +90,8 @@ func marshal(v reflect.Value) ([]byte, error) {
 	return bytes.Clone(buffer.Bytes()), nil
 }
 
-func SignedNumberEncoder(v int64, field *Field, wireType WireType) (*bytes.Buffer, error) {
-	switch wireType {
+func SignedNumberEncoder(v int64, field *Field) (*bytes.Buffer, error) {
+	switch field.Tags.Protobuf.WireType {
 	case WireTypeI32:
 		{
 			return Fixed32Encode(int32(v)), nil
@@ -124,8 +124,8 @@ func signedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*byt
 	}
 }
 
-func UnsignedNumberEncoder(v uint64, field *Field, wireType WireType) (*bytes.Buffer, error) {
-	switch wireType {
+func UnsignedNumberEncoder(v uint64, field *Field) (*bytes.Buffer, error) {
+	switch field.Tags.Protobuf.WireType {
 	case WireTypeI32:
 		{
 			return Fixed32Encode(int32(v)), nil
@@ -158,7 +158,7 @@ func unsignedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*b
 	}
 }
 
-func FloatEncoder(v float32, field *Field, wireType WireType) (*bytes.Buffer, error) {
+func FloatEncoder(v float32, field *Field) (*bytes.Buffer, error) {
 	return Float32Encode(v), nil
 }
 
@@ -166,7 +166,7 @@ func floatEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buff
 	return Float32Encode(float32(v.Float())), nil
 }
 
-func DoubleEncoder(v float64, field *Field, wireType WireType) (*bytes.Buffer, error) {
+func DoubleEncoder(v float64, field *Field) (*bytes.Buffer, error) {
 	return Float46Encode(v), nil
 }
 
@@ -174,7 +174,7 @@ func doubleEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buf
 	return Float46Encode(v.Float()), nil
 }
 
-func BooleanEncoder(v bool, field *Field, wireType WireType) (*bytes.Buffer, error) {
+func BooleanEncoder(v bool, field *Field) (*bytes.Buffer, error) {
 	return BoolEncode(v), nil
 }
 
@@ -182,7 +182,7 @@ func booleanEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Bu
 	return BoolEncode(v.Bool()), nil
 }
 
-func StringEncoder(v string, field *Field, wireType WireType) (*bytes.Buffer, error) {
+func StringEncoder(v string, field *Field) (*bytes.Buffer, error) {
 	return StringEncode(v), nil
 }
 
@@ -340,8 +340,8 @@ func unmarshal(bytes *bytes.Buffer, v reflect.Value) error {
 	return nil
 }
 
-func SignedNumberDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (int64, error) {
-	switch wireType {
+func SignedNumberDecoder(field *Field, bytes *bytes.Buffer) (int64, error) {
+	switch field.Tags.Protobuf.WireType {
 	case WireTypeI32:
 		{
 			value, err := Fixed32Decode(bytes)
@@ -394,8 +394,8 @@ func signedNumberDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wir
 	}
 }
 
-func UnsignedNumberDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (uint64, error) {
-	switch wireType {
+func UnsignedNumberDecoder(field *Field, bytes *bytes.Buffer) (uint64, error) {
+	switch field.Tags.Protobuf.WireType {
 	case WireTypeI32:
 		{
 			value, err := Fixed32Decode(bytes)
@@ -452,7 +452,7 @@ func unsignedNumberDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, w
 	}
 }
 
-func FloatDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (float32, error) {
+func FloatDecoder(field *Field, bytes *bytes.Buffer) (float32, error) {
 	return Float32Decode(bytes)
 }
 
@@ -466,7 +466,7 @@ func floatDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType W
 	return nil
 }
 
-func DoubleDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (float64, error) {
+func DoubleDecoder(field *Field, bytes *bytes.Buffer) (float64, error) {
 	return Float64Decode(bytes)
 }
 
@@ -480,7 +480,7 @@ func doubleDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType 
 	return nil
 }
 
-func BooleanDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (bool, error) {
+func BooleanDecoder(field *Field, bytes *bytes.Buffer) (bool, error) {
 	return BoolDecode(bytes)
 }
 
@@ -494,7 +494,7 @@ func booleanDecoder(v reflect.Value, field *Field, bytes *bytes.Buffer, wireType
 	return nil
 }
 
-func StringDecoder(field *Field, bytes *bytes.Buffer, wireType WireType) (string, error) {
+func StringDecoder(field *Field, bytes *bytes.Buffer) (string, error) {
 	return StringDecode(bytes)
 }
 

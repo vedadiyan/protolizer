@@ -15,11 +15,11 @@ func TagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	}
 
 	tag := (int64(fieldNumber) << 3) | int64(wireType)
-	return VarintEncode(tag), nil
+	return UvarintEncode(uint64(tag)), nil
 }
 
 func TagDecode(data *bytes.Buffer) (int32, WireType, error) {
-	tag, err := VarintDecode(data)
+	tag, err := UvarintDecode(data)
 	if err != nil {
 		return 0, 0, err
 	}

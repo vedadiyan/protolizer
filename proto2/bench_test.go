@@ -236,7 +236,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 	switch f.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.UnsignedNumberEncoder(c.Id, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.UnsignedNumberEncoder(c.Id, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -247,7 +247,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 2:
 		{
-			data, err := protolizer.StringEncoder(c.Name, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.StringEncoder(c.Name, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -257,7 +257,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 3:
 		{
-			data, err := protolizer.StringEncoder(c.Email, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.StringEncoder(c.Email, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -267,7 +267,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 4:
 		{
-			data, err := protolizer.DoubleEncoder(c.Score, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.DoubleEncoder(c.Score, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -277,7 +277,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 5:
 		{
-			data, err := protolizer.BooleanEncoder(c.IsActive, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.BooleanEncoder(c.IsActive, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -296,7 +296,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				data, err := protolizer.StringEncoder(x, f, f.Tags.Protobuf.WireType)
+				data, err := protolizer.StringEncoder(x, f)
 				if err != nil {
 					return err
 				}
@@ -310,7 +310,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 			innerBuffer := protolizer.Alloc(0)
 			defer protolizer.Dealloc(innerBuffer)
 			for _, x := range c.Numbers {
-				data, err := protolizer.SignedNumberEncoder(int64(x), f, protolizer.WireTypeVarint)
+				data, err := protolizer.SignedNumberEncoder(int64(x), f)
 				if err != nil {
 					return err
 				}
@@ -324,6 +324,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 8:
 		{
+
 			tag, err := protolizer.TagEncode(int32(f.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
 			defer protolizer.Dealloc(tag)
 			if err != nil {
@@ -337,7 +338,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 				i++
 				innerBuffer := protolizer.Alloc(0)
 				innerBuffer.Write(f.KeyTag)
-				k, err := protolizer.StringEncoder(key, f, protolizer.WireTypeLen)
+				k, err := protolizer.StringEncoder(key, f)
 				if err != nil {
 					return err
 				}
@@ -345,7 +346,8 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 				k.WriteTo(innerBuffer)
 				protolizer.Dealloc(k)
 				innerBuffer.Write(f.ValueTag)
-				v, err := protolizer.StringEncoder(value, f, protolizer.WireTypeLen)
+
+				v, err := protolizer.StringEncoder(value, f)
 				if err != nil {
 					return err
 				}
@@ -360,7 +362,7 @@ func (c *ComplexMessage) Encode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 9:
 		{
-			data, err := protolizer.SignedNumberEncoder(c.Timestamp, f, f.Tags.Protobuf.WireType)
+			data, err := protolizer.SignedNumberEncoder(c.Timestamp, f)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
@@ -379,7 +381,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 	switch f.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			value, err := protolizer.SignedNumberDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.SignedNumberDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
@@ -388,7 +390,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 2:
 		{
-			value, err := protolizer.StringDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.StringDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
@@ -397,7 +399,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 3:
 		{
-			value, err := protolizer.StringDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.StringDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
@@ -406,7 +408,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 4:
 		{
-			value, err := protolizer.DoubleDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.DoubleDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
@@ -415,7 +417,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 5:
 		{
-			value, err := protolizer.BooleanDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.BooleanDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
@@ -458,7 +460,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 			innerBuffer.Write(bytes)
 			defer protolizer.Dealloc(innerBuffer)
 			for innerBuffer.Len() != 0 {
-				value, err := protolizer.SignedNumberDecoder(f, innerBuffer, protolizer.WireTypeVarint)
+				value, err := protolizer.SignedNumberDecoder(f, innerBuffer)
 				if err != nil {
 					return err
 				}
@@ -497,7 +499,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 					return err
 				}
 				_ = x
-				key, err := protolizer.StringDecoder(f, innerBuffer, protolizer.WireTypeLen)
+				key, err := protolizer.StringDecoder(f, innerBuffer)
 				if err != nil {
 					protolizer.Dealloc(innerBuffer)
 					return err
@@ -508,7 +510,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 					return err
 				}
 				_ = y
-				value, err := protolizer.StringDecoder(f, innerBuffer, protolizer.WireTypeLen)
+				value, err := protolizer.StringDecoder(f, innerBuffer)
 				if err != nil {
 					protolizer.Dealloc(innerBuffer)
 					return err
@@ -521,7 +523,7 @@ func (c *ComplexMessage) Decode(f *protolizer.Field, buffer *bytes.Buffer) error
 		}
 	case 9:
 		{
-			value, err := protolizer.SignedNumberDecoder(f, buffer, f.Tags.Protobuf.WireType)
+			value, err := protolizer.SignedNumberDecoder(f, buffer)
 			if err != nil {
 				return err
 			}
