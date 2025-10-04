@@ -106,6 +106,36 @@ func RegisterTypeFor[T any]() {
 	_registry[TypeName(t)] = out
 }
 
+func RegisterTypeAs[T any](name string) {
+	out := new(Type)
+
+	t := reflect.TypeFor[T]()
+	elemType := t
+	if t.Kind() == reflect.Ptr {
+		elemType = t.Elem()
+	}
+
+	out.Name = TypeName(elemType)
+	out.Fields = make([]*Field, 0)
+	for i := range elemType.NumField() {
+		f := newField(elemType.Field(i))
+		if !f.Tags.isProtobuf() {
+			continue
+		}
+		out.Fields = append(out.Fields, f)
+	}
+	sort.Slice(out.Fields, func(i, j int) bool {
+		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
+	})
+
+	out.FieldsIndexer = make(map[int]*Field)
+	for _, i := range out.Fields {
+		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
+	}
+
+	_registry[name] = out
+}
+
 func TypeName(t reflect.Type) string {
 	return t.String()
 }

@@ -15,6 +15,10 @@ func UvarintEncode(value uint64) *bytes.Buffer {
 	return memory
 }
 
+func UvarintEncodeToBuffer(value uint64, buffer *bytes.Buffer) {
+	uvarint(value, buffer)
+}
+
 func uvarint(value uint64, buffer *bytes.Buffer) {
 	for value >= 0x80 {
 		buffer.WriteByte(byte(value) | 0x80)
@@ -31,7 +35,6 @@ func VarintDecode(data *bytes.Buffer) (int64, error) {
 func UvarintDecode(data *bytes.Buffer) (uint64, error) {
 	var result uint64
 	var shift uint
-
 	for data.Len() != 0 {
 		b, _ := data.ReadByte()
 		if shift == 63 && b > 1 {
@@ -42,7 +45,6 @@ func UvarintDecode(data *bytes.Buffer) (uint64, error) {
 		if b&0x80 == 0 {
 			return result, nil
 		}
-
 		shift += 7
 	}
 	return 0, fmt.Errorf("truncated varint")

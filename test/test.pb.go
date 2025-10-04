@@ -1,0 +1,1018 @@
+package test
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"github.com/vedadiyan/protolizer"
+)
+
+type SimplePerson struct {
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name"`
+	Age  int    `protobuf:"varint,2,opt,name=age,proto3" json:"age"`
+	Id   uint64 `protobuf:"varint,3,opt,name=id,proto3" json:"id"`
+}
+
+func (x *SimplePerson) New() protolizer.Reflected {
+	return new(SimplePerson)
+}
+
+func (x *SimplePerson) Type() protolizer.Type {
+	return *protolizer.CaptureTypeByName("protobench.SimplePerson")
+}
+
+func (x *SimplePerson) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			data, err := protolizer.StringEncoder(x.Name, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 2:
+		{
+			data, err := protolizer.SignedNumberEncoder(int64(x.Age), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 3:
+		{
+			data, err := protolizer.UnsignedNumberEncoder(uint64(x.Id), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *SimplePerson) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Name = value
+			return nil
+		}
+	case 2:
+		{
+			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := int(value)
+			x.Age = val
+			return nil
+		}
+	case 3:
+		{
+			value, err := protolizer.UnsignedNumberDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := uint64(value)
+			x.Id = val
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *SimplePerson) IsZero(field *protolizer.Field) bool {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			return len(x.Name) == 0
+		}
+	case 2:
+		{
+			return x.Age == 0
+		}
+	case 3:
+		{
+			return x.Id == 0
+		}
+	default:
+		{
+			return true
+		}
+	}
+}
+
+func init() {
+	protolizer.RegisterTypeAs[SimplePerson]("protobench.SimplePerson")
+}
+
+type ComplexMessage struct {
+	Id        uint64            `protobuf:"varint,1,opt,name=id,proto3" json:"id"`
+	Name      string            `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
+	Email     string            `protobuf:"bytes,3,opt,name=email,proto3" json:"email"`
+	Score     float64           `protobuf:"fixed64,4,opt,name=score,proto3" json:"score"`
+	IsActive  bool              `protobuf:"varint,5,opt,name=is_active,json=isActive,proto3" json:"isActive"`
+	Tags      []string          `protobuf:"bytes,6,rep,name=tags,proto3" json:"tags"`
+	Numbers   []int             `protobuf:"varint,7,rep,packed,name=numbers,proto3" json:"numbers"`
+	Metadata  map[string]string `protobuf:"bytes,8,rep,name=metadata,proto3" json:"metadata" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Timestamp int64             `protobuf:"varint,9,opt,name=timestamp,proto3" json:"timestamp"`
+}
+
+func (x *ComplexMessage) New() protolizer.Reflected {
+	return new(ComplexMessage)
+}
+
+func (x *ComplexMessage) Type() protolizer.Type {
+	return *protolizer.CaptureTypeByName("protobench.ComplexMessage")
+}
+
+func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			data, err := protolizer.UnsignedNumberEncoder(uint64(x.Id), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 2:
+		{
+			data, err := protolizer.StringEncoder(x.Name, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 3:
+		{
+			data, err := protolizer.StringEncoder(x.Email, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 4:
+		{
+			data, err := protolizer.DoubleEncoder(float64(x.Score), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 5:
+		{
+			data, err := protolizer.BooleanEncoder(x.IsActive, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 6:
+		{
+			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
+			defer protolizer.Dealloc(tag)
+			if err != nil {
+				return err
+			}
+			for i, x := range x.Tags {
+				if i != 0 {
+					buffer.Write(tag.Bytes())
+				}
+				data, err := protolizer.StringEncoder(x, field)
+				if err != nil {
+					return err
+				}
+				data.WriteTo(buffer)
+				protolizer.Dealloc(data)
+			}
+			return nil
+
+		}
+	case 7:
+		{
+			innerBuffer := protolizer.Alloc(0)
+			defer protolizer.Dealloc(innerBuffer)
+			for _, value := range x.Numbers {
+				data, err := protolizer.SignedNumberEncoder(int64(value), field)
+				if err != nil {
+					return err
+				}
+				data.WriteTo(innerBuffer)
+				protolizer.Dealloc(data)
+			}
+			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes.WriteTo(buffer)
+			protolizer.Dealloc(bytes)
+			return nil
+
+		}
+	case 8:
+		{
+			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
+			defer protolizer.Dealloc(tag)
+			if err != nil {
+				return err
+			}
+			i := 0
+			for key, value := range x.Metadata {
+				if i != 0 {
+					buffer.Write(tag.Bytes())
+				}
+				i++
+				innerBuffer := protolizer.Alloc(0)
+				innerBuffer.Write(field.KeyTag)
+				k, err := protolizer.StringEncoder(key, field)
+				if err != nil {
+					return err
+				}
+				k.WriteTo(innerBuffer)
+				protolizer.Dealloc(k)
+				innerBuffer.Write(field.ValueTag)
+				v, err := protolizer.StringEncoder(value, field)
+				if err != nil {
+					return err
+				}
+
+				v.WriteTo(innerBuffer)
+				protolizer.Dealloc(v)
+				bytes := protolizer.BufferEncode(innerBuffer)
+				bytes.WriteTo(buffer)
+				protolizer.Dealloc(innerBuffer)
+				protolizer.Dealloc(bytes)
+			}
+			return nil
+
+		}
+	case 9:
+		{
+			data, err := protolizer.SignedNumberEncoder(int64(x.Timestamp), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			value, err := protolizer.UnsignedNumberDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := uint64(value)
+			x.Id = val
+			return nil
+		}
+	case 2:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Name = value
+			return nil
+		}
+	case 3:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Email = value
+			return nil
+		}
+	case 4:
+		{
+			value, err := protolizer.DoubleDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := float64(value)
+			x.Score = val
+			return nil
+		}
+	case 5:
+		{
+			value, err := protolizer.BooleanDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.IsActive = value
+			return nil
+		}
+	case 6:
+		{
+			i := 0
+			for {
+				if i != 0 {
+					i, _, read, err := protolizer.TagPeek(buffer)
+					if err != nil {
+						if err == io.EOF {
+							return nil
+						}
+						return err
+					}
+					if i != int32(field.Tags.Protobuf.FieldNum) {
+						break
+					}
+					read()
+				}
+				i++
+				value, err := protolizer.StringDecode(buffer)
+				if err != nil {
+					return nil
+				}
+				x.Tags = append(x.Tags, string(value))
+			}
+			return nil
+		}
+	case 7:
+		{
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			innerBuffer := protolizer.Alloc(0)
+			innerBuffer.Write(bytes)
+			defer protolizer.Dealloc(innerBuffer)
+			for innerBuffer.Len() != 0 {
+				value, err := protolizer.SignedNumberDecoder(field, innerBuffer)
+				if err != nil {
+					return err
+				}
+				x.Numbers = append(x.Numbers, int(value))
+			}
+			return nil
+		}
+	case 8:
+		{
+			x.Metadata = make(map[string]string)
+			i := 0
+			for {
+				if i != 0 {
+					i, _, read, err := protolizer.TagPeek(buffer)
+					if err != nil {
+						if err == io.EOF {
+							return nil
+						}
+						return err
+					}
+					if i != int32(field.Tags.Protobuf.FieldNum) {
+						break
+					}
+					read()
+				}
+				i++
+				bytes, err := protolizer.BytesDecode(buffer)
+				if err != nil {
+					return nil
+				}
+				innerBuffer := protolizer.Alloc(0)
+				innerBuffer.Write(bytes)
+				_, _, err = protolizer.TagDecode(innerBuffer)
+				if err != nil {
+					protolizer.Dealloc(innerBuffer)
+					return err
+				}
+				key, err := protolizer.StringDecoder(field, innerBuffer)
+				if err != nil {
+					return err
+				}
+
+				_, _, err = protolizer.TagDecode(innerBuffer)
+				if err != nil {
+					protolizer.Dealloc(innerBuffer)
+					return err
+				}
+				value, err := protolizer.StringDecoder(field, innerBuffer)
+				if err != nil {
+					return err
+				}
+				x.Metadata[string(key)] = string(value)
+				protolizer.Dealloc(innerBuffer)
+			}
+			return nil
+		}
+	case 9:
+		{
+			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := int64(value)
+			x.Timestamp = val
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *ComplexMessage) IsZero(field *protolizer.Field) bool {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			return x.Id == 0
+		}
+	case 2:
+		{
+			return len(x.Name) == 0
+		}
+	case 3:
+		{
+			return len(x.Email) == 0
+		}
+	case 4:
+		{
+			return x.Score == 0
+		}
+	case 5:
+		{
+			return x.IsActive == false
+		}
+	case 6:
+		{
+			return x.Tags == nil
+		}
+	case 7:
+		{
+			return x.Numbers == nil
+		}
+	case 8:
+		{
+			return x.Metadata == nil
+		}
+	case 9:
+		{
+			return x.Timestamp == 0
+		}
+	default:
+		{
+			return true
+		}
+	}
+}
+
+func init() {
+	protolizer.RegisterTypeAs[ComplexMessage]("protobench.ComplexMessage")
+}
+
+type AddressInfo struct {
+	Street  string `protobuf:"bytes,1,opt,name=street,proto3" json:"street"`
+	City    string `protobuf:"bytes,2,opt,name=city,proto3" json:"city"`
+	Zipcode string `protobuf:"bytes,3,opt,name=zipcode,proto3" json:"zipcode"`
+	Country string `protobuf:"bytes,4,opt,name=country,proto3" json:"country"`
+}
+
+func (x *AddressInfo) New() protolizer.Reflected {
+	return new(AddressInfo)
+}
+
+func (x *AddressInfo) Type() protolizer.Type {
+	return *protolizer.CaptureTypeByName("protobench.AddressInfo")
+}
+
+func (x *AddressInfo) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			data, err := protolizer.StringEncoder(x.Street, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 2:
+		{
+			data, err := protolizer.StringEncoder(x.City, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 3:
+		{
+			data, err := protolizer.StringEncoder(x.Zipcode, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 4:
+		{
+			data, err := protolizer.StringEncoder(x.Country, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Street = value
+			return nil
+		}
+	case 2:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.City = value
+			return nil
+		}
+	case 3:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Zipcode = value
+			return nil
+		}
+	case 4:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Country = value
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *AddressInfo) IsZero(field *protolizer.Field) bool {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			return len(x.Street) == 0
+		}
+	case 2:
+		{
+			return len(x.City) == 0
+		}
+	case 3:
+		{
+			return len(x.Zipcode) == 0
+		}
+	case 4:
+		{
+			return len(x.Country) == 0
+		}
+	default:
+		{
+			return true
+		}
+	}
+}
+
+func init() {
+	protolizer.RegisterTypeAs[AddressInfo]("protobench.AddressInfo")
+}
+
+type ExtraData struct {
+	Notes    string    `protobuf:"bytes,1,opt,name=notes,proto3" json:"notes"`
+	Priority int       `protobuf:"varint,2,opt,name=priority,proto3" json:"priority"`
+	Flags    []bool    `protobuf:"varint,3,rep,packed,name=flags,proto3" json:"flags"`
+	Config   []float64 `protobuf:"fixed64,4,rep,packed,name=config,proto3" json:"config"`
+}
+
+func (x *ExtraData) New() protolizer.Reflected {
+	return new(ExtraData)
+}
+
+func (x *ExtraData) Type() protolizer.Type {
+	return *protolizer.CaptureTypeByName("protobench.ExtraData")
+}
+
+func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			data, err := protolizer.StringEncoder(x.Notes, field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 2:
+		{
+			data, err := protolizer.SignedNumberEncoder(int64(x.Priority), field)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+			data.WriteTo(buffer)
+			return nil
+
+		}
+	case 3:
+		{
+			innerBuffer := protolizer.Alloc(0)
+			defer protolizer.Dealloc(innerBuffer)
+			for _, value := range x.Flags {
+				data, err := protolizer.BooleanEncoder(value, field)
+				if err != nil {
+					return err
+				}
+				data.WriteTo(innerBuffer)
+				protolizer.Dealloc(data)
+			}
+
+			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes.WriteTo(buffer)
+			protolizer.Dealloc(bytes)
+			return nil
+
+		}
+	case 4:
+		{
+			innerBuffer := protolizer.Alloc(0)
+			defer protolizer.Dealloc(innerBuffer)
+			for _, value := range x.Config {
+				data, err := protolizer.DoubleEncoder(value, field)
+				if err != nil {
+					return err
+				}
+				data.WriteTo(innerBuffer)
+				protolizer.Dealloc(data)
+			}
+			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes.WriteTo(buffer)
+			protolizer.Dealloc(bytes)
+			return nil
+
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			value, err := protolizer.StringDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			x.Notes = value
+			return nil
+		}
+	case 2:
+		{
+			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			if err != nil {
+				return err
+			}
+			val := int(value)
+			x.Priority = val
+			return nil
+		}
+	case 3:
+		{
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			innerBuffer := protolizer.Alloc(0)
+			innerBuffer.Write(bytes)
+			defer protolizer.Dealloc(innerBuffer)
+			for innerBuffer.Len() != 0 {
+				value, err := protolizer.BooleanDecoder(field, innerBuffer)
+				if err != nil {
+					return err
+				}
+				x.Flags = append(x.Flags, bool(value))
+			}
+			return nil
+		}
+	case 4:
+		{
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			innerBuffer := protolizer.Alloc(0)
+			innerBuffer.Write(bytes)
+			defer protolizer.Dealloc(innerBuffer)
+			for innerBuffer.Len() != 0 {
+				value, err := protolizer.DoubleDecoder(field, innerBuffer)
+				if err != nil {
+					return err
+				}
+				x.Config = append(x.Config, float64(value))
+			}
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *ExtraData) IsZero(field *protolizer.Field) bool {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			return len(x.Notes) == 0
+		}
+	case 2:
+		{
+			return x.Priority == 0
+		}
+	case 3:
+		{
+			return x.Flags == nil
+		}
+	case 4:
+		{
+			return x.Config == nil
+		}
+	default:
+		{
+			return true
+		}
+	}
+}
+
+func init() {
+	protolizer.RegisterTypeAs[ExtraData]("protobench.ExtraData")
+}
+
+type NestedMessage struct {
+	Person  *SimplePerson `protobuf:"bytes,1,opt,name=person,proto3" json:"person"`
+	Address *AddressInfo  `protobuf:"bytes,2,opt,name=address,proto3" json:"address"`
+	Phones  []string      `protobuf:"bytes,3,rep,name=phones,proto3" json:"phones"`
+	Extra   *ExtraData    `protobuf:"bytes,4,opt,name=extra,proto3" json:"extra"`
+}
+
+func (x *NestedMessage) New() protolizer.Reflected {
+	return new(NestedMessage)
+}
+
+func (x *NestedMessage) Type() protolizer.Type {
+	return *protolizer.CaptureTypeByName("protobench.NestedMessage")
+}
+
+func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			data, err := protolizer.FastMarshalToBuffer(x.Person)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+
+			bytes := protolizer.BufferEncode(data)
+			defer protolizer.Dealloc(bytes)
+			bytes.WriteTo(buffer)
+			return nil
+
+		}
+	case 2:
+		{
+			data, err := protolizer.FastMarshalToBuffer(x.Address)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+
+			bytes := protolizer.BufferEncode(data)
+			defer protolizer.Dealloc(bytes)
+			bytes.WriteTo(buffer)
+			return nil
+
+		}
+	case 3:
+		{
+			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
+			defer protolizer.Dealloc(tag)
+			if err != nil {
+				return err
+			}
+			for i, x := range x.Phones {
+				if i != 0 {
+					buffer.Write(tag.Bytes())
+				}
+				data, err := protolizer.StringEncoder(x, field)
+				if err != nil {
+					return err
+				}
+				data.WriteTo(buffer)
+				protolizer.Dealloc(data)
+			}
+			return nil
+
+		}
+	case 4:
+		{
+			data, err := protolizer.FastMarshalToBuffer(x.Extra)
+			defer protolizer.Dealloc(data)
+			if err != nil {
+				return err
+			}
+
+			bytes := protolizer.BufferEncode(data)
+			defer protolizer.Dealloc(bytes)
+			bytes.WriteTo(buffer)
+			return nil
+
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			value := new(SimplePerson)
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			err = protolizer.FastUnmarshal(value, bytes)
+			if err != nil {
+				return err
+			}
+			x.Person = value
+			return nil
+		}
+	case 2:
+		{
+			value := new(AddressInfo)
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			err = protolizer.FastUnmarshal(value, bytes)
+			if err != nil {
+				return err
+			}
+			x.Address = value
+			return nil
+		}
+	case 3:
+		{
+			i := 0
+			for {
+				if i != 0 {
+					i, _, read, err := protolizer.TagPeek(buffer)
+					if err != nil {
+						if err == io.EOF {
+							return nil
+						}
+						return err
+					}
+					if i != int32(field.Tags.Protobuf.FieldNum) {
+						break
+					}
+					read()
+				}
+				i++
+				value, err := protolizer.StringDecode(buffer)
+				if err != nil {
+					return nil
+				}
+				x.Phones = append(x.Phones, string(value))
+			}
+			return nil
+		}
+	case 4:
+		{
+			value := new(ExtraData)
+			bytes, err := protolizer.BytesDecode(buffer)
+			if err != nil {
+				return err
+			}
+			err = protolizer.FastUnmarshal(value, bytes)
+			if err != nil {
+				return err
+			}
+			x.Extra = value
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("invalid field")
+		}
+	}
+}
+
+func (x *NestedMessage) IsZero(field *protolizer.Field) bool {
+	switch field.Tags.Protobuf.FieldNum {
+	case 1:
+		{
+			return x.Person == nil
+		}
+	case 2:
+		{
+			return x.Address == nil
+		}
+	case 3:
+		{
+			return x.Phones == nil
+		}
+	case 4:
+		{
+			return x.Extra == nil
+		}
+	default:
+		{
+			return true
+		}
+	}
+}
+
+func init() {
+	protolizer.RegisterTypeAs[NestedMessage]("protobench.NestedMessage")
+}

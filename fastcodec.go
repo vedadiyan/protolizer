@@ -21,18 +21,36 @@ func FastMarshal(v Reflected) ([]byte, error) {
 		if v.IsZero(field) {
 			continue
 		}
-		tag, err := TagEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType)
+		err := TagEncodeToBuffer(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
-		tag.WriteTo(buffer)
-		Dealloc(tag)
 		if err := v.Encode(field, buffer); err != nil {
 			return nil, err
 		}
 	}
 
 	return bytes.Clone(buffer.Bytes()), nil
+}
+
+func FastMarshalToBuffer(v Reflected) (*bytes.Buffer, error) {
+	typ := v.Type()
+
+	buffer := Alloc(0)
+	for _, field := range typ.Fields {
+		if v.IsZero(field) {
+			continue
+		}
+		err := TagEncodeToBuffer(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
+		if err != nil {
+			return nil, err
+		}
+		if err := v.Encode(field, buffer); err != nil {
+			return nil, err
+		}
+	}
+
+	return buffer, nil
 }
 
 func FastUnmarshal(v Reflected, data []byte) error {
@@ -49,6 +67,26 @@ func FastUnmarshal(v Reflected, data []byte) error {
 		}
 		field := typ.FieldsIndexer[int(fieldNumber)]
 		if err := v.Decode(field, buffer); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func FastUnmarshalFromBuffer(v Reflected, data *bytes.Buffer) error {
+	typ := v.Type()
+	l, err := UvarintDecode(data)
+	if err != nil {
+		return err
+	}
+	end := data.Len() - int(l)
+	for data.Len() != end {
+		fieldNumber, _, err := TagDecode(data)
+		if err != nil {
+			return err
+		}
+		field := typ.FieldsIndexer[int(fieldNumber)]
+		if err := v.Decode(field, data); err != nil {
 			return err
 		}
 	}

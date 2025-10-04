@@ -18,6 +18,19 @@ func TagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	return UvarintEncode(uint64(tag)), nil
 }
 
+func TagEncodeToBuffer(fieldNumber int32, wireType WireType, buffer *bytes.Buffer) error {
+	if fieldNumber < 1 {
+		return fmt.Errorf("field number must be positive")
+	}
+	if wireType > 5 {
+		return fmt.Errorf("invalid wire type")
+	}
+
+	tag := (int64(fieldNumber) << 3) | int64(wireType)
+	UvarintEncodeToBuffer(uint64(tag), buffer)
+	return nil
+}
+
 func TagDecode(data *bytes.Buffer) (int32, WireType, error) {
 	tag, err := UvarintDecode(data)
 	if err != nil {

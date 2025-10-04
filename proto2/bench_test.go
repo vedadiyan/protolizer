@@ -103,13 +103,13 @@ func BenchmarkPBMarshal_Complex(b *testing.B) {
 
 func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
-	data, err := protolizer.FastMarshal(m)
+	data, err := protolizer.Marshal(m)
 	if err != nil {
 		b.Fatal(err)
 	}
 	var out ComplexMessage
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 		if out.Email != m.Email {
