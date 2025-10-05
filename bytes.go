@@ -12,7 +12,7 @@ func BytesEncode(value []byte) *bytes.Buffer {
 	return memory
 }
 
-func BytesInlineEncode(value *bytes.Buffer) *bytes.Buffer {
+func BufferEncode(value *bytes.Buffer) *bytes.Buffer {
 	memory := Alloc(0)
 	uvarint(uint64(value.Len()), memory)
 	value.WriteTo(memory)

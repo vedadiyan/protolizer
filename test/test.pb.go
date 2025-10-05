@@ -185,7 +185,7 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 			for _, value := range x.Numbers {
 				protolizer.SignedNumberInlineEncoder(int64(value), field, innerBuffer)
 			}
-			bytes := protolizer.BytesInlineEncode(innerBuffer)
+			bytes := protolizer.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -209,7 +209,7 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 				protolizer.StringInlineEncode(key, innerBuffer)
 				innerBuffer.Write(field.ValueTag)
 				protolizer.StringInlineEncode(value, innerBuffer)
-				bytes := protolizer.BytesInlineEncode(innerBuffer)
+				bytes := protolizer.BufferEncode(innerBuffer)
 				bytes.WriteTo(buffer)
 				protolizer.Dealloc(innerBuffer)
 				protolizer.Dealloc(bytes)
@@ -597,7 +597,7 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 				protolizer.BoolInlineEncode(value, innerBuffer)
 			}
 
-			bytes := protolizer.BytesInlineEncode(innerBuffer)
+			bytes := protolizer.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -610,7 +610,7 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 			for _, value := range x.Config {
 				protolizer.Float64InlineEncode(value, innerBuffer)
 			}
-			bytes := protolizer.BytesInlineEncode(innerBuffer)
+			bytes := protolizer.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -741,7 +741,7 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				return err
 			}
 
-			bytes := protolizer.BytesInlineEncode(data)
+			bytes := protolizer.BufferEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
@@ -755,7 +755,7 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				return err
 			}
 
-			bytes := protolizer.BytesInlineEncode(data)
+			bytes := protolizer.BufferEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
@@ -785,7 +785,7 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				return err
 			}
 
-			bytes := protolizer.BytesInlineEncode(data)
+			bytes := protolizer.BufferEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
