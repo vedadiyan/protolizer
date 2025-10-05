@@ -16,13 +16,29 @@ func Float32Encode(value float32) *bytes.Buffer {
 	return memory
 }
 
-func Float46Encode(value float64) *bytes.Buffer {
+func Float32InlineEncode(value float32, buffer *bytes.Buffer) {
+	buffer.Grow(4)
+	buf := buffer.AvailableBuffer()[:4]
+	bits := math.Float32bits(value)
+	binary.LittleEndian.PutUint32(buf, bits)
+	buffer.Write(buf)
+}
+
+func Float64Encode(value float64) *bytes.Buffer {
 	memory := Alloc(8)
 	buf := memory.AvailableBuffer()[:8]
 	bits := math.Float64bits(value)
 	binary.LittleEndian.PutUint64(buf, bits)
 	memory.Write(buf)
 	return memory
+}
+
+func Float64InlineEncode(value float64, buffer *bytes.Buffer) {
+	buffer.Grow(8)
+	buf := buffer.AvailableBuffer()[:8]
+	bits := math.Float64bits(value)
+	binary.LittleEndian.PutUint64(buf, bits)
+	buffer.Write(buf)
 }
 
 func Float32Decode(data *bytes.Buffer) (float32, error) {

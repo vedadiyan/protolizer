@@ -15,7 +15,7 @@ func UvarintEncode(value uint64) *bytes.Buffer {
 	return memory
 }
 
-func UvarintEncodeToBuffer(value uint64, buffer *bytes.Buffer) {
+func UvarintInlineEncode(value uint64, buffer *bytes.Buffer) {
 	uvarint(value, buffer)
 }
 

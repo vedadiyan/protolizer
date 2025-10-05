@@ -26,36 +26,19 @@ func (x *SimplePerson) Encode(field *protolizer.Field, buffer *bytes.Buffer) err
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.StringEncoder(x.Name, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Name, buffer)
 			return nil
 
 		}
 	case 2:
 		{
-			data, err := protolizer.SignedNumberEncoder(int64(x.Age), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.SignedNumberInlineEncoder(int64(x.Age), field, buffer)
 			return nil
-
 		}
 	case 3:
 		{
-			data, err := protolizer.UnsignedNumberEncoder(uint64(x.Id), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.UnsignedNumberInlineEncoder(uint64(x.Id), field, buffer)
 			return nil
-
 		}
 	default:
 		{
@@ -151,56 +134,31 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.UnsignedNumberEncoder(uint64(x.Id), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.UnsignedNumberInlineEncoder(uint64(x.Id), field, buffer)
 			return nil
 
 		}
 	case 2:
 		{
-			data, err := protolizer.StringEncoder(x.Name, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Name, buffer)
 			return nil
 
 		}
 	case 3:
 		{
-			data, err := protolizer.StringEncoder(x.Email, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Email, buffer)
 			return nil
 
 		}
 	case 4:
 		{
-			data, err := protolizer.DoubleEncoder(float64(x.Score), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.Float64InlineEncode(float64(x.Score), buffer)
 			return nil
 
 		}
 	case 5:
 		{
-			data, err := protolizer.BooleanEncoder(x.IsActive, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.BoolInlineEncode(x.IsActive, buffer)
 			return nil
 
 		}
@@ -215,12 +173,7 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				data, err := protolizer.StringEncoder(x, field)
-				if err != nil {
-					return err
-				}
-				data.WriteTo(buffer)
-				protolizer.Dealloc(data)
+				protolizer.StringInlineEncode(x, buffer)
 			}
 			return nil
 
@@ -230,14 +183,9 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 			innerBuffer := protolizer.Alloc(0)
 			defer protolizer.Dealloc(innerBuffer)
 			for _, value := range x.Numbers {
-				data, err := protolizer.SignedNumberEncoder(int64(value), field)
-				if err != nil {
-					return err
-				}
-				data.WriteTo(innerBuffer)
-				protolizer.Dealloc(data)
+				protolizer.SignedNumberInlineEncoder(int64(value), field, innerBuffer)
 			}
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := protolizer.BytesInlineEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -258,21 +206,10 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 				i++
 				innerBuffer := protolizer.Alloc(0)
 				innerBuffer.Write(field.KeyTag)
-				k, err := protolizer.StringEncoder(key, field)
-				if err != nil {
-					return err
-				}
-				k.WriteTo(innerBuffer)
-				protolizer.Dealloc(k)
+				protolizer.StringInlineEncode(key, innerBuffer)
 				innerBuffer.Write(field.ValueTag)
-				v, err := protolizer.StringEncoder(value, field)
-				if err != nil {
-					return err
-				}
-
-				v.WriteTo(innerBuffer)
-				protolizer.Dealloc(v)
-				bytes := protolizer.BufferEncode(innerBuffer)
+				protolizer.StringInlineEncode(value, innerBuffer)
+				bytes := protolizer.BytesInlineEncode(innerBuffer)
 				bytes.WriteTo(buffer)
 				protolizer.Dealloc(innerBuffer)
 				protolizer.Dealloc(bytes)
@@ -282,12 +219,7 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 		}
 	case 9:
 		{
-			data, err := protolizer.SignedNumberEncoder(int64(x.Timestamp), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.SignedNumberInlineEncoder(int64(x.Timestamp), field, buffer)
 			return nil
 
 		}
@@ -525,45 +457,25 @@ func (x *AddressInfo) Encode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.StringEncoder(x.Street, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Street, buffer)
 			return nil
 
 		}
 	case 2:
 		{
-			data, err := protolizer.StringEncoder(x.City, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.City, buffer)
 			return nil
 
 		}
 	case 3:
 		{
-			data, err := protolizer.StringEncoder(x.Zipcode, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Zipcode, buffer)
 			return nil
 
 		}
 	case 4:
 		{
-			data, err := protolizer.StringEncoder(x.Country, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Country, buffer)
 			return nil
 
 		}
@@ -667,23 +579,13 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.StringEncoder(x.Notes, field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.StringInlineEncode(x.Notes, buffer)
 			return nil
 
 		}
 	case 2:
 		{
-			data, err := protolizer.SignedNumberEncoder(int64(x.Priority), field)
-			defer protolizer.Dealloc(data)
-			if err != nil {
-				return err
-			}
-			data.WriteTo(buffer)
+			protolizer.SignedNumberInlineEncoder(int64(x.Priority), field, buffer)
 			return nil
 
 		}
@@ -692,15 +594,10 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 			innerBuffer := protolizer.Alloc(0)
 			defer protolizer.Dealloc(innerBuffer)
 			for _, value := range x.Flags {
-				data, err := protolizer.BooleanEncoder(value, field)
-				if err != nil {
-					return err
-				}
-				data.WriteTo(innerBuffer)
-				protolizer.Dealloc(data)
+				protolizer.BoolInlineEncode(value, innerBuffer)
 			}
 
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := protolizer.BytesInlineEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -711,14 +608,9 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 			innerBuffer := protolizer.Alloc(0)
 			defer protolizer.Dealloc(innerBuffer)
 			for _, value := range x.Config {
-				data, err := protolizer.DoubleEncoder(value, field)
-				if err != nil {
-					return err
-				}
-				data.WriteTo(innerBuffer)
-				protolizer.Dealloc(data)
+				protolizer.Float64InlineEncode(value, innerBuffer)
 			}
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := protolizer.BytesInlineEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
 			return nil
@@ -843,13 +735,13 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
-			data, err := protolizer.FastMarshalToBuffer(x.Person)
+			data, err := protolizer.FastInlineMarshal(x.Person)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
+			bytes := protolizer.BytesInlineEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
@@ -857,13 +749,13 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 		}
 	case 2:
 		{
-			data, err := protolizer.FastMarshalToBuffer(x.Address)
+			data, err := protolizer.FastInlineMarshal(x.Address)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
+			bytes := protolizer.BytesInlineEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
@@ -880,25 +772,20 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				data, err := protolizer.StringEncoder(x, field)
-				if err != nil {
-					return err
-				}
-				data.WriteTo(buffer)
-				protolizer.Dealloc(data)
+				protolizer.StringInlineEncode(x, buffer)
 			}
 			return nil
 
 		}
 	case 4:
 		{
-			data, err := protolizer.FastMarshalToBuffer(x.Extra)
+			data, err := protolizer.FastInlineMarshal(x.Extra)
 			defer protolizer.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
+			bytes := protolizer.BytesInlineEncode(data)
 			defer protolizer.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil

@@ -14,12 +14,26 @@ func Fixed32Encode(value int32) *bytes.Buffer {
 	return memory
 }
 
+func Fixed32InlineEncode(value int32, buffer *bytes.Buffer) {
+	buffer.Grow(4)
+	buf := buffer.AvailableBuffer()[:4]
+	binary.LittleEndian.PutUint32(buf, uint32(value))
+	buffer.Write(buf)
+}
+
 func Fixed64Encode(value int64) *bytes.Buffer {
 	memory := Alloc(8)
 	buf := memory.AvailableBuffer()[:8]
 	binary.LittleEndian.PutUint64(buf, uint64(value))
 	memory.Write(buf)
 	return memory
+}
+
+func Fixed64InlineEncode(value int64, buffer *bytes.Buffer) {
+	buffer.Grow(8)
+	buf := buffer.AvailableBuffer()[:8]
+	binary.LittleEndian.PutUint64(buf, uint64(value))
+	buffer.Write(buf)
 }
 
 func Fixed32Decode(data *bytes.Buffer) (int32, error) {

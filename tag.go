@@ -18,7 +18,7 @@ func TagEncode(fieldNumber int32, wireType WireType) (*bytes.Buffer, error) {
 	return UvarintEncode(uint64(tag)), nil
 }
 
-func TagEncodeToBuffer(fieldNumber int32, wireType WireType, buffer *bytes.Buffer) error {
+func TagInlineEncode(fieldNumber int32, wireType WireType, buffer *bytes.Buffer) error {
 	if fieldNumber < 1 {
 		return fmt.Errorf("field number must be positive")
 	}
@@ -27,7 +27,7 @@ func TagEncodeToBuffer(fieldNumber int32, wireType WireType, buffer *bytes.Buffe
 	}
 
 	tag := (int64(fieldNumber) << 3) | int64(wireType)
-	UvarintEncodeToBuffer(uint64(tag), buffer)
+	UvarintInlineEncode(uint64(tag), buffer)
 	return nil
 }
 

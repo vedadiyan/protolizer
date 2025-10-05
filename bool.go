@@ -9,6 +9,14 @@ func BoolEncode(value bool) *bytes.Buffer {
 	return VarintEncode(0)
 }
 
+func BoolInlineEncode(value bool, buffer *bytes.Buffer) {
+	if value {
+		UvarintInlineEncode(1, buffer)
+		return
+	}
+	UvarintInlineEncode(0, buffer)
+}
+
 func BoolDecode(data *bytes.Buffer) (bool, error) {
 	value, err := VarintDecode(data)
 	if err != nil {

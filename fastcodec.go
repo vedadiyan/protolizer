@@ -21,7 +21,7 @@ func FastMarshal(v Reflected) ([]byte, error) {
 		if v.IsZero(field) {
 			continue
 		}
-		err := TagEncodeToBuffer(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
+		err := TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +33,7 @@ func FastMarshal(v Reflected) ([]byte, error) {
 	return bytes.Clone(buffer.Bytes()), nil
 }
 
-func FastMarshalToBuffer(v Reflected) (*bytes.Buffer, error) {
+func FastInlineMarshal(v Reflected) (*bytes.Buffer, error) {
 	typ := v.Type()
 
 	buffer := Alloc(0)
@@ -41,7 +41,7 @@ func FastMarshalToBuffer(v Reflected) (*bytes.Buffer, error) {
 		if v.IsZero(field) {
 			continue
 		}
-		err := TagEncodeToBuffer(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
+		err := TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}

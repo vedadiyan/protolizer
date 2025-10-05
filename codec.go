@@ -107,6 +107,23 @@ func SignedNumberEncoder(v int64, field *Field) (*bytes.Buffer, error) {
 	}
 }
 
+func SignedNumberInlineEncoder(v int64, field *Field, buffer *bytes.Buffer) {
+	switch field.Tags.Protobuf.WireType {
+	case WireTypeI32:
+		{
+			Fixed32InlineEncode(int32(v), buffer)
+		}
+	case WireTypeI64:
+		{
+			Fixed64InlineEncode(v, buffer)
+		}
+	default:
+		{
+			ZigzagInlineEncode(v, buffer)
+		}
+	}
+}
+
 func signedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer, error) {
 	switch wireType {
 	case WireTypeI32:
@@ -141,6 +158,23 @@ func UnsignedNumberEncoder(v uint64, field *Field) (*bytes.Buffer, error) {
 	}
 }
 
+func UnsignedNumberInlineEncoder(v uint64, field *Field, buffer *bytes.Buffer) {
+	switch field.Tags.Protobuf.WireType {
+	case WireTypeI32:
+		{
+			Fixed32InlineEncode(int32(v), buffer)
+		}
+	case WireTypeI64:
+		{
+			Fixed64InlineEncode(int64(v), buffer)
+		}
+	default:
+		{
+			UvarintInlineEncode(v, buffer)
+		}
+	}
+}
+
 func unsignedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer, error) {
 	switch wireType {
 	case WireTypeI32:
@@ -158,20 +192,16 @@ func unsignedNumberEncoder(v reflect.Value, field *Field, wireType WireType) (*b
 	}
 }
 
-func FloatEncoder(v float32, field *Field) (*bytes.Buffer, error) {
-	return Float32Encode(v), nil
-}
-
 func floatEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer, error) {
 	return Float32Encode(float32(v.Float())), nil
 }
 
 func DoubleEncoder(v float64, field *Field) (*bytes.Buffer, error) {
-	return Float46Encode(v), nil
+	return Float64Encode(v), nil
 }
 
 func doubleEncoder(v reflect.Value, field *Field, wireType WireType) (*bytes.Buffer, error) {
-	return Float46Encode(v.Float()), nil
+	return Float64Encode(v.Float()), nil
 }
 
 func BooleanEncoder(v bool, field *Field) (*bytes.Buffer, error) {
