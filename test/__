@@ -34,13 +34,11 @@ func (x *SimplePerson) Encode(field *protolizer.Field, buffer *bytes.Buffer) err
 		{
 			protolizer.SignedNumberInlineEncoder(int64(x.Age), field, buffer)
 			return nil
-
 		}
 	case 3:
 		{
 			protolizer.UnsignedNumberInlineEncoder(uint64(x.Id), field, buffer)
 			return nil
-
 		}
 	default:
 		{
@@ -211,7 +209,6 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 				protolizer.StringInlineEncode(key, innerBuffer)
 				innerBuffer.Write(field.ValueTag)
 				protolizer.StringInlineEncode(value, innerBuffer)
-
 				bytes := protolizer.BufferEncode(innerBuffer)
 				bytes.WriteTo(buffer)
 				protolizer.Dealloc(innerBuffer)
@@ -599,6 +596,7 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 			for _, value := range x.Flags {
 				protolizer.BoolInlineEncode(value, innerBuffer)
 			}
+
 			bytes := protolizer.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
 			protolizer.Dealloc(bytes)
