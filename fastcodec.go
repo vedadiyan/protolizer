@@ -86,7 +86,7 @@ func FastInlineMarshal(v Reflected) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
-func FastUnmarshal(v Reflected, data []byte) error {
+func FastUnmarshal(data []byte, v Reflected) error {
 	typ := v.Type()
 
 	buffer := Alloc(0)

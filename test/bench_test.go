@@ -62,6 +62,9 @@ func createNestedMessagePB() *NestedMessage {
 			Flags:    []bool{true, false, true},
 			Config:   []float64{30.5, 3.0, 100.0},
 		},
+		PersonArray: []SimplePerson{
+			SimplePerson{Name: "Ok", Age: 100, Id: 12345},
+		},
 	}
 }
 
@@ -84,7 +87,7 @@ func BenchmarkPBUnmarshal_Simple(b *testing.B) {
 	}
 	var out SimplePerson
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -107,7 +110,7 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	}
 	var out ComplexMessage
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 		if out.Email != m.Email {
@@ -133,7 +136,7 @@ func BenchmarkPBUnmarshal_Nested(b *testing.B) {
 	}
 	var out NestedMessage
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 		if out.Person.Name != m.Person.Name {
@@ -150,7 +153,7 @@ func BenchmarkPBRoundTrip_Simple(b *testing.B) {
 			b.Fatal(err)
 		}
 		var out SimplePerson
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -164,7 +167,7 @@ func BenchmarkPBRoundTrip_Complex(b *testing.B) {
 			b.Fatal(err)
 		}
 		var out ComplexMessage
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -178,7 +181,7 @@ func BenchmarkPBRoundTrip_Nested(b *testing.B) {
 			b.Fatal(err)
 		}
 		var out NestedMessage
-		if err := protolizer.FastUnmarshal(&out, data); err != nil {
+		if err := protolizer.FastUnmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
