@@ -7,7 +7,6 @@ import (
 
 type Header map[string][]string
 type Options map[string]string
-type Handler[I Reflected, O Reflected] func(*Request[I]) (*Response[O], error)
 
 type Request[T Reflected] struct {
 	Headers    Header
