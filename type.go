@@ -1,6 +1,7 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sort"
@@ -37,6 +38,9 @@ type (
 		IsPointer  bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
 		TypeName   string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
 		Tags       *Tags        `protobuf:"bytes,10,opt,name=tags,proto3"`
+		Tag        []byte       `protobuf:"bytes,11,opt,name=tag,proto3"`
+		KeyTag     []byte       `protobuf:"bytes,12,opt,name=tag,proto3"`
+		ValueTag   []byte       `protobuf:"bytes,13,opt,name=tag,proto3"`
 	}
 
 	Type struct {
@@ -102,8 +106,38 @@ func RegisterTypeFor[T any]() {
 	_registry[TypeName(t)] = out
 }
 
+func RegisterTypeAs[T any](name string) {
+	out := new(Type)
+
+	t := reflect.TypeFor[T]()
+	elemType := t
+	if t.Kind() == reflect.Ptr {
+		elemType = t.Elem()
+	}
+
+	out.Name = TypeName(elemType)
+	out.Fields = make([]*Field, 0)
+	for i := range elemType.NumField() {
+		f := newField(elemType.Field(i))
+		if !f.Tags.isProtobuf() {
+			continue
+		}
+		out.Fields = append(out.Fields, f)
+	}
+	sort.Slice(out.Fields, func(i, j int) bool {
+		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
+	})
+
+	out.FieldsIndexer = make(map[int]*Field)
+	for _, i := range out.Fields {
+		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
+	}
+
+	_registry[name] = out
+}
+
 func TypeName(t reflect.Type) string {
-	return fmt.Sprintf("%s.%s", t.PkgPath(), t.Name())
+	return t.String()
 }
 
 func CaptureTypeFor[T any]() *Type {
@@ -153,9 +187,37 @@ func newField(f reflect.StructField) *Field {
 	}
 	if out.IsPointer {
 		out.TypeName = TypeName(f.Type.Elem())
+	} else {
+		out.TypeName = TypeName(f.Type)
+	}
+
+	if out.Tags.Protobuf == nil {
 		return out
 	}
-	out.TypeName = TypeName(f.Type)
+	w := out.Tags.Protobuf.WireType
+	if out.Kind == reflect.Slice {
+		w = WireTypeLen
+	}
+	tag, err := TagEncode(int32(out.Tags.Protobuf.FieldNum), w)
+	if err != nil {
+		panic(err)
+	}
+	out.Tag = bytes.Clone(tag.Bytes())
+	Dealloc(tag)
+
+	keyTag, err := TagEncode(int32(1), out.Tags.MapKey)
+	if err != nil {
+		panic(err)
+	}
+	out.KeyTag = bytes.Clone(keyTag.Bytes())
+	Dealloc(keyTag)
+
+	valueTag, err := TagEncode(int32(2), out.Tags.MapValue)
+	if err != nil {
+		panic(err)
+	}
+	out.ValueTag = bytes.Clone(valueTag.Bytes())
+	Dealloc(valueTag)
 	return out
 }
 

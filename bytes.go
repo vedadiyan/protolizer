@@ -1,44 +1,53 @@
 package protolizer
 
 import (
+	"bytes"
 	"fmt"
 )
 
-func encodeBytes(value []byte) []byte {
-	length := encodeVarint(int64(len(value)))
-	return append(length, value...)
+func BytesEncode(value []byte) *bytes.Buffer {
+	memory := Alloc(0)
+	uvarint(uint64(len(value)), memory)
+	memory.Write(value)
+	return memory
 }
 
-func encodeString(value string) []byte {
-	return encodeBytes([]byte(value))
+func BufferEncode(value *bytes.Buffer) *bytes.Buffer {
+	memory := Alloc(0)
+	uvarint(uint64(value.Len()), memory)
+	value.WriteTo(memory)
+	return memory
 }
 
-func decodeBytes(data []byte, offset int) ([]byte, int, error) {
-	length, lengthSize, err := decodeVarint(data, offset)
+func StringEncode(value string) *bytes.Buffer {
+	return BytesEncode([]byte(value))
+}
+
+func StringInlineEncode(value string, buffer *bytes.Buffer) {
+	uvarint(uint64(len(value)), buffer)
+	buffer.WriteString(value)
+}
+
+func BytesDecode(data *bytes.Buffer) ([]byte, error) {
+	length, err := VarintDecode(data)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if length < 0 {
-		return nil, 0, fmt.Errorf("negative length")
+		return nil, fmt.Errorf("negative length")
 	}
 
-	start := offset + lengthSize
-	end := start + int(length)
-
-	if len(data) < end {
-		return nil, 0, fmt.Errorf("insufficient bytes for length-prefixed data")
+	if data.Len() < int(length) {
+		return nil, fmt.Errorf("insufficient bytes for length-prefixed data")
 	}
-
-	value := make([]byte, length)
-	copy(value, data[start:end])
-	return value, lengthSize + int(length), nil
+	return data.Next(int(length)), nil
 }
 
-func decodeString(data []byte, offset int) (string, int, error) {
-	bytes, consumed, err := decodeBytes(data, offset)
+func StringDecode(data *bytes.Buffer) (string, error) {
+	bytes, err := BytesDecode(data)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	return string(bytes), consumed, nil
+	return string(bytes), nil
 }

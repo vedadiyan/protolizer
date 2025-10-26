@@ -1,16 +1,26 @@
 package protolizer
 
-func encodeBool(value bool) []byte {
+import "bytes"
+
+func BoolEncode(value bool) *bytes.Buffer {
 	if value {
-		return encodeVarint(1)
+		return VarintEncode(1)
 	}
-	return encodeVarint(0)
+	return VarintEncode(0)
 }
 
-func decodeBool(data []byte, offset int) (bool, int, error) {
-	value, consumed, err := decodeVarint(data, offset)
-	if err != nil {
-		return false, 0, err
+func BoolInlineEncode(value bool, buffer *bytes.Buffer) {
+	if value {
+		UvarintInlineEncode(1, buffer)
+		return
 	}
-	return value != 0, consumed, nil
+	UvarintInlineEncode(0, buffer)
+}
+
+func BoolDecode(data *bytes.Buffer) (bool, error) {
+	value, err := VarintDecode(data)
+	if err != nil {
+		return false, err
+	}
+	return value != 0, nil
 }

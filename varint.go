@@ -1,44 +1,72 @@
 package protolizer
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
-func encodeVarint(value int64) []byte {
-	return encodeUvarint(uint64(value))
+func VarintEncode(value int64) *bytes.Buffer {
+	return UvarintEncode(uint64(value))
 }
 
-func encodeUvarint(value uint64) []byte {
-	var result []byte
+func UvarintEncode(value uint64) *bytes.Buffer {
+	memory := Alloc(0)
+	uvarint(value, memory)
+	return memory
+}
+
+func UvarintInlineEncode(value uint64, buffer *bytes.Buffer) {
+	uvarint(value, buffer)
+}
+
+func uvarint(value uint64, buffer *bytes.Buffer) {
 	for value >= 0x80 {
-		result = append(result, byte(value)|0x80)
+		buffer.WriteByte(byte(value) | 0x80)
 		value >>= 7
 	}
-	result = append(result, byte(value))
-	return result
+	buffer.WriteByte(byte(value))
 }
 
-func decodeVarint(data []byte, offset int) (int64, int, error) {
-	value, consumed, err := decodeUvarint(data, offset)
-	return int64(value), consumed, err
+func VarintDecode(data *bytes.Buffer) (int64, error) {
+	value, err := UvarintDecode(data)
+	return int64(value), err
 }
 
-func decodeUvarint(data []byte, offset int) (uint64, int, error) {
+func UvarintDecode(data *bytes.Buffer) (uint64, error) {
 	var result uint64
 	var shift uint
-	pos := offset
-
-	for pos < len(data) {
-		b := data[pos]
+	for data.Len() != 0 {
+		b, _ := data.ReadByte()
 		if shift == 63 && b > 1 {
-			return 0, 0, fmt.Errorf("varint overflows uint64")
+			return 0, fmt.Errorf("varint overflows uint64")
 		}
 		result |= uint64(b&0x7f) << shift
-		pos++
 
 		if b&0x80 == 0 {
-			return result, pos - offset, nil
+			return result, nil
+		}
+		shift += 7
+	}
+	return 0, fmt.Errorf("truncated varint")
+}
+
+func UvarintPeek(data *bytes.Buffer) (uint64, error) {
+	var result uint64
+	var shift uint
+	bytes := data.Bytes()
+
+	for i := 0; i < len(bytes); i++ {
+		b := bytes[i]
+		if shift == 63 && b > 1 {
+			return 0, fmt.Errorf("varint overflows uint64")
+		}
+		result |= uint64(b&0x7f) << shift
+
+		if b&0x80 == 0 {
+			return result, nil
 		}
 
 		shift += 7
 	}
-	return 0, 0, fmt.Errorf("truncated varint")
+	return 0, fmt.Errorf("truncated varint")
 }
