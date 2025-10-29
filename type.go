@@ -64,11 +64,13 @@ const (
 )
 
 var (
-	_registry map[string]*Type
+	_registry      map[string]*Type
+	_builtEncoders map[string]func(reflect.Value) ([]byte, error)
 )
 
 func init() {
 	_registry = make(map[string]*Type)
+	_builtEncoders = make(map[string]func(reflect.Value) ([]byte, error))
 	RegisterTypeFor[Tags]()
 	RegisterTypeFor[ProtobufInfo]()
 	RegisterTypeFor[Field]()
@@ -374,7 +376,7 @@ func BuildEncoder(t reflect.Type) func(reflect.Value) ([]byte, error) {
 	for index, field := range typ.FieldsIndexer {
 		out[index] = Encode(field)
 	}
-	return func(v reflect.Value) ([]byte, error) {
+	_builtEncoders[TypeName(t)] = func(v reflect.Value) ([]byte, error) {
 		buffer := Alloc(0)
 		defer Dealloc(buffer)
 		for _, field := range typ.Fields {
@@ -392,6 +394,7 @@ func BuildEncoder(t reflect.Type) func(reflect.Value) ([]byte, error) {
 		}
 		return bytes.Clone(buffer.Bytes()), nil
 	}
+	return _builtEncoders[TypeName(t)]
 }
 
 func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
@@ -528,7 +531,7 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	case k == 25:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				bytes, err := BuildEncoder(v.Type())(v)
+				bytes, err := _builtEncoders[TypeName(v.Type())](v)
 				if err != nil {
 					return err
 				}
