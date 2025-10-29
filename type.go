@@ -379,6 +379,9 @@ func BuildEncoder(t reflect.Type) func(reflect.Value) ([]byte, error) {
 	_builtEncoders[TypeName(t)] = func(v reflect.Value) ([]byte, error) {
 		buffer := Alloc(0)
 		defer Dealloc(buffer)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
 		for _, field := range typ.Fields {
 			value := v.FieldByIndex(field.FieldIndex)
 			if value.IsZero() {
