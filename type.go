@@ -441,9 +441,9 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 		{
 			if field.Index == reflect.Uint8 {
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
-					tmp := BytesEncode(v.Bytes())
-					defer Dealloc(tmp)
-					_, _ = tmp.WriteTo(buffer)
+					bytes := BytesEncode(v.Bytes())
+					defer Dealloc(bytes)
+					_, _ = bytes.WriteTo(buffer)
 					return nil
 				}
 			}
@@ -536,13 +536,13 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	case k == 25:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				bytes, err := _builtEncoders[TypeName(v.Type())](v)
+				out, err := _builtEncoders[TypeName(v.Type())](v)
 				if err != nil {
 					return err
 				}
-				tmp := BytesEncode(bytes)
-				defer Dealloc(tmp)
-				_, _ = tmp.WriteTo(buffer)
+				bytes := BytesEncode(out)
+				defer Dealloc(bytes)
+				_, _ = bytes.WriteTo(buffer)
 				return nil
 			}
 		}
