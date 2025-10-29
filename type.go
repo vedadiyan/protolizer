@@ -65,12 +65,12 @@ const (
 
 var (
 	_registry      map[string]*Type
-	_builtEncoders map[string]func(reflect.Value) ([]byte, error)
+	_builtEncoders map[string]func(any) ([]byte, error)
 )
 
 func init() {
 	_registry = make(map[string]*Type)
-	_builtEncoders = make(map[string]func(reflect.Value) ([]byte, error))
+	_builtEncoders = make(map[string]func(any) ([]byte, error))
 	RegisterTypeFor[Tags]()
 	RegisterTypeFor[ProtobufInfo]()
 	RegisterTypeFor[Field]()
@@ -370,15 +370,16 @@ func ImportModule(bytes []byte) (*Module, error) {
 	return module, nil
 }
 
-func BuildEncoder(t reflect.Type) func(reflect.Value) ([]byte, error) {
+func BuildEncoder(t reflect.Type) func(any) ([]byte, error) {
 	typ := CaptureType(t)
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range typ.FieldsIndexer {
 		out[index] = Encode(field)
 	}
-	_builtEncoders[TypeName(t)] = func(v reflect.Value) ([]byte, error) {
+	_builtEncoders[TypeName(t)] = func(in any) ([]byte, error) {
 		buffer := Alloc(0)
 		defer Dealloc(buffer)
+		v := reflect.ValueOf(in)
 		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
 		}
@@ -536,7 +537,216 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	case k == 25:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := _builtEncoders[TypeName(v.Type())](v)
+				out, err := _builtEncoders[TypeName(v.Type())](v.Interface())
+				if err != nil {
+					return err
+				}
+				bytes := BytesEncode(out)
+				defer Dealloc(bytes)
+				_, _ = bytes.WriteTo(buffer)
+				return nil
+			}
+		}
+	}
+	return func(v reflect.Value, buffer *bytes.Buffer) error {
+		return nil
+	}
+}
+
+func BuildDecoder(t reflect.Type) func(any) ([]byte, error) {
+	typ := CaptureType(t)
+	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
+	for index, field := range typ.FieldsIndexer {
+		out[index] = Deode(field)
+	}
+	_builtEncoders[TypeName(t)] = func(in any) ([]byte, error) {
+		buffer := Alloc(0)
+		defer Dealloc(buffer)
+		v := reflect.ValueOf(in)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
+		for _, field := range typ.Fields {
+			value := v.FieldByIndex(field.FieldIndex)
+			if value.IsZero() {
+				continue
+			}
+			if field.IsPointer {
+				value = value.Elem()
+			}
+			_, _ = buffer.Write(field.Tag)
+			if err := out[field.Tags.Protobuf.FieldNum](value, buffer); err != nil {
+				return nil, err
+			}
+		}
+		return bytes.Clone(buffer.Bytes()), nil
+	}
+	return _builtEncoders[TypeName(t)]
+}
+
+func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+	switch k := field.Kind; {
+	case k == 1:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := BoolDecode(buffer)
+				if err != nil {
+					return err
+				}
+				v.SetBool(out)
+				return nil
+			}
+		}
+	case k >= 2 && k <= 6:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := SignedNumberDecoder(field, buffer)
+				if err != nil {
+					return err
+				}
+				v.SetInt(out)
+				return nil
+			}
+		}
+	case k >= 7 && k <= 11:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := UnsignedNumberDecoder(field, buffer)
+				if err != nil {
+					return err
+				}
+				v.SetUint(out)
+				return nil
+			}
+		}
+	case k == 13:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := Float32Decode(buffer)
+				if err != nil {
+					return err
+				}
+				v.SetFloat(float64(out))
+				return nil
+			}
+		}
+	case k == 14:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := Float64Decode(buffer)
+				if err != nil {
+					return err
+				}
+				v.SetFloat(out)
+				return nil
+			}
+		}
+	case k == 17:
+		{
+			if field.Index == reflect.Uint8 {
+				return func(v reflect.Value, buffer *bytes.Buffer) error {
+					bytes, err := BytesDecode(buffer)
+					if err != nil {
+						return err
+					}
+					v.SetBytes(bytes)
+					return nil
+				}
+			}
+			w := field.Tags.Protobuf.WireType
+			if w == WireTypeVarint || w == WireTypeI32 || w == WireTypeI64 {
+				return func(v reflect.Value, buffer *bytes.Buffer) error {
+					innerBuffer := Alloc(0)
+					defer Dealloc(innerBuffer)
+					f := *field
+					for i := range v.Len() {
+						x := v.Index(i)
+						if i == 0 {
+							f.Kind = x.Kind()
+						}
+						Encode(&f)(x, innerBuffer)
+					}
+					bytes := BufferEncode(innerBuffer)
+					bytes.WriteTo(buffer)
+					Dealloc(bytes)
+					return nil
+				}
+			}
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				tag, err := TagEncode(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
+				defer Dealloc(tag)
+				if err != nil {
+					return err
+				}
+				f := *field
+				for i := range v.Len() {
+					if i != 0 {
+						buffer.Write(tag.Bytes())
+					}
+					x := v.Index(i)
+					if i == 0 {
+						f.Kind = x.Kind()
+					}
+					Encode(&f)(x, buffer)
+				}
+				return nil
+			}
+		}
+	case k == 21:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				tag, err := TagEncode(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
+				defer Dealloc(tag)
+				if err != nil {
+					return err
+				}
+				i := 0
+				r := v.MapRange()
+				kf := *field
+				kf.Tags.Protobuf.WireType = kf.Tags.MapKey
+				kf.Kind = kf.Key
+				kv := *field
+				kv.Tags.Protobuf.WireType = kv.Tags.MapValue
+				kv.Kind = kv.Index
+				for r.Next() {
+					key := r.Key()
+					value := r.Value()
+					if i != 0 {
+						buffer.Write(tag.Bytes())
+					}
+					i++
+					innerBuffer := Alloc(0)
+					innerBuffer.Write(field.KeyTag)
+
+					Encode(&kf)(key, innerBuffer)
+
+					innerBuffer.Write(field.ValueTag)
+
+					Encode(&kv)(value, innerBuffer)
+
+					bytes := BufferEncode(innerBuffer)
+					bytes.WriteTo(buffer)
+					Dealloc(innerBuffer)
+					Dealloc(bytes)
+				}
+				return nil
+			}
+		}
+	case k == 24:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := StringDecode(buffer)
+				if err != nil {
+					return err
+				}
+				v.SetString(out)
+				return nil
+			}
+		}
+	case k == 25:
+		{
+			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				out, err := _builtEncoders[TypeName(v.Type())](v.Interface())
 				if err != nil {
 					return err
 				}
