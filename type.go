@@ -527,7 +527,7 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					}
 
 					bytes := BufferEncode(innerBuffer)
-					bytes.WriteTo(buffer)
+					_, _ = bytes.WriteTo(buffer)
 					Dealloc(innerBuffer)
 					Dealloc(bytes)
 				}
