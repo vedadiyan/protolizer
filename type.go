@@ -748,7 +748,7 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					i++
 					bytes, err := BytesDecode(buffer)
 					if err != nil {
-						return nil
+						return err
 					}
 					innerBuffer := Alloc(0)
 					innerBuffer.Write(bytes)
