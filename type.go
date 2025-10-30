@@ -510,24 +510,24 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					key := r.Key()
 					value := r.Value()
 					if i != 0 {
-						buffer.Write(tag.Bytes())
+						IgnoreReturn(buffer.Write(tag.Bytes()))
 					}
 					i++
 					innerBuffer := Alloc(0)
-					_, _ = innerBuffer.Write(field.KeyTag)
+					IgnoreReturn(innerBuffer.Write(field.KeyTag))
 
 					if err := kfn(key, innerBuffer); err != nil {
 						return err
 					}
 
-					_, _ = innerBuffer.Write(field.ValueTag)
+					IgnoreReturn(innerBuffer.Write(field.ValueTag))
 
 					if err := vfn(value, innerBuffer); err != nil {
 						return err
 					}
 
 					bytes := BufferEncode(innerBuffer)
-					_, _ = bytes.WriteTo(buffer)
+					IgnoreReturn(bytes.WriteTo(buffer))
 					Dealloc(innerBuffer)
 					Dealloc(bytes)
 				}
@@ -550,7 +550,7 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				}
 				bytes := BytesEncode(out)
 				defer Dealloc(bytes)
-				_, _ = bytes.WriteTo(buffer)
+				IgnoreReturn(bytes.WriteTo(buffer))
 				return nil
 			}
 		}
