@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -95,10 +96,14 @@ func BenchmarkPBUnmarshal_Simple(b *testing.B) {
 
 func BenchmarkPBMarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
+	protolizer.RegisterTypeFor[ComplexMessage]()
+	fn := protolizer.BuildEncoder(reflect.TypeOf(m).Elem())
 	for i := 0; i < b.N; i++ {
-		if _, err := protolizer.FastMarshal(m); err != nil {
+		_, err := fn(m)
+		if err != nil {
 			b.Fatal(err)
 		}
+
 	}
 }
 
