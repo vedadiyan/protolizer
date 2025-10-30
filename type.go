@@ -514,13 +514,17 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					}
 					i++
 					innerBuffer := Alloc(0)
-					innerBuffer.Write(field.KeyTag)
+					_, _ = innerBuffer.Write(field.KeyTag)
 
-					kfn(key, innerBuffer)
+					if err := kfn(key, innerBuffer); err != nil {
+						return err
+					}
 
-					innerBuffer.Write(field.ValueTag)
+					_, _ = innerBuffer.Write(field.ValueTag)
 
-					vfn(value, innerBuffer)
+					if err := vfn(value, innerBuffer); err != nil {
+						return err
+					}
 
 					bytes := BufferEncode(innerBuffer)
 					bytes.WriteTo(buffer)
