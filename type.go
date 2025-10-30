@@ -458,9 +458,10 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					defer Dealloc(innerBuffer)
 					f := *field
 					f.Kind = f.Index
+					fn := Encode(&f)
 					for i := range v.Len() {
 						x := v.Index(i)
-						Encode(&f)(x, innerBuffer)
+						fn(x, innerBuffer)
 					}
 					bytes := BufferEncode(innerBuffer)
 					bytes.WriteTo(buffer)
@@ -476,12 +477,13 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				}
 				f := *field
 				f.Kind = f.Index
+				fn := Encode(&f)
 				for i := range v.Len() {
 					if i != 0 {
 						buffer.Write(tag.Bytes())
 					}
 					x := v.Index(i)
-					Encode(&f)(x, buffer)
+					fn(x, buffer)
 				}
 				return nil
 			}
@@ -502,6 +504,8 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				kv := *field
 				kv.Tags.Protobuf.WireType = kv.Tags.MapValue
 				kv.Kind = kv.Index
+				kfn := Encode(&kf)
+				vfn := Encode(&kv)
 				for r.Next() {
 					key := r.Key()
 					value := r.Value()
@@ -512,11 +516,11 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := Alloc(0)
 					innerBuffer.Write(field.KeyTag)
 
-					Encode(&kf)(key, innerBuffer)
+					kfn(key, innerBuffer)
 
 					innerBuffer.Write(field.ValueTag)
 
-					Encode(&kv)(value, innerBuffer)
+					vfn(value, innerBuffer)
 
 					bytes := BufferEncode(innerBuffer)
 					bytes.WriteTo(buffer)

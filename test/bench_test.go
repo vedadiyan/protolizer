@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"testing"
@@ -98,6 +99,8 @@ func BenchmarkPBMarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
 	protolizer.RegisterTypeFor[ComplexMessage]()
 	fn := protolizer.BuildEncoder(reflect.TypeOf(m).Elem())
+	fn2 := protolizer.BuildDecoder(reflect.TypeOf(m).Elem())
+	_ = fn2
 	for i := 0; i < b.N; i++ {
 		_, err := fn(m)
 		if err != nil {
@@ -113,9 +116,10 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	fn2 := protolizer.BuildDecoder(reflect.TypeOf(m).Elem())
 	var out ComplexMessage
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.FastUnmarshal(data, &out); err != nil {
+		if err := fn2(bytes.NewBuffer(data), &out); err != nil {
 			b.Fatal(err)
 		}
 		if out.Email != m.Email {
