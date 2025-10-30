@@ -669,14 +669,16 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := Alloc(0)
 					innerBuffer.Write(bytes)
 					defer Dealloc(innerBuffer)
+					fn := Deode(&f)
+					array := reflect.MakeSlice(v.Type(), 0, 0)
+					value := reflect.New(t).Elem()
 					for innerBuffer.Len() != 0 {
-						value := reflect.New(t).Elem()
-						err := Deode(&f)(value, innerBuffer)
-						if err != nil {
+						if err := fn(value, innerBuffer); err != nil {
 							return nil
 						}
-						v = reflect.Append(v, value)
+						array = reflect.Append(array, value)
 					}
+					v.Set(array)
 					return nil
 				}
 			}
@@ -685,6 +687,9 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				t := v.Type().Elem()
 				f := *field
 				f.Kind = f.Index
+				fn := Deode(&f)
+				array := reflect.MakeSlice(v.Type(), 0, 0)
+				value := reflect.New(t).Elem()
 				for {
 					if i != 0 {
 						i, _, read, err := TagPeek(buffer)
@@ -700,14 +705,13 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 						read()
 					}
 					i++
-					value := reflect.New(t).Elem()
 
-					err := Deode(&f)(value, buffer)
-					if err != nil {
+					if err := fn(value, buffer); err != nil {
 						return nil
 					}
-					v = reflect.Append(v, value)
+					array = reflect.Append(array, value)
 				}
+				v.Set(array)
 				return nil
 			}
 		}
@@ -721,8 +725,12 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				kf.Kind = kf.Key
 				vf := *field
 				vf.Kind = vf.Index
+				kfn := Deode(&kf)
+				vfn := Deode(&vf)
 				mapper := reflect.MakeMap(reflect.MapOf(kt, vt))
 				i := 0
+				key := reflect.New(kt).Elem()
+				value := reflect.New(vt).Elem()
 				for {
 					if i != 0 {
 						i, _, read, err := TagPeek(buffer)
@@ -750,8 +758,7 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 						return err
 					}
 
-					key := reflect.New(kt).Elem()
-					if err := Deode(&kf)(key, innerBuffer); err != nil {
+					if err := kfn(key, innerBuffer); err != nil {
 						return nil
 					}
 
@@ -761,8 +768,7 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 						return err
 					}
 
-					value := reflect.New(vt).Elem()
-					if err := Deode(&vf)(value, innerBuffer); err != nil {
+					if err := vfn(value, innerBuffer); err != nil {
 						return nil
 					}
 
