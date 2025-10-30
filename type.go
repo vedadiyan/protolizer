@@ -759,7 +759,8 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					}
 
 					if err := kfn(key, innerBuffer); err != nil {
-						return nil
+						Dealloc(innerBuffer)
+						return err
 					}
 
 					_, _, err = TagDecode(innerBuffer)
@@ -769,7 +770,8 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					}
 
 					if err := vfn(value, innerBuffer); err != nil {
-						return nil
+						Dealloc(innerBuffer)
+						return err
 					}
 
 					mapper.SetMapIndex(key, value)
