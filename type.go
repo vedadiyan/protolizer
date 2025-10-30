@@ -457,11 +457,9 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := Alloc(0)
 					defer Dealloc(innerBuffer)
 					f := *field
+					f.Kind = f.Index
 					for i := range v.Len() {
 						x := v.Index(i)
-						if i == 0 {
-							f.Kind = x.Kind()
-						}
 						Encode(&f)(x, innerBuffer)
 					}
 					bytes := BufferEncode(innerBuffer)
@@ -477,14 +475,12 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					return err
 				}
 				f := *field
+				f.Kind = f.Index
 				for i := range v.Len() {
 					if i != 0 {
 						buffer.Write(tag.Bytes())
 					}
 					x := v.Index(i)
-					if i == 0 {
-						f.Kind = x.Kind()
-					}
 					Encode(&f)(x, buffer)
 				}
 				return nil
