@@ -1,4 +1,4 @@
-package protolizer
+package util
 
 func IgnoreReturn(...any) {
 

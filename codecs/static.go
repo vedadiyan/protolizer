@@ -3,16 +3,18 @@ package codecs
 import (
 	"bytes"
 
-	p "github.com/vedadiyan/protolizer"
+	aloc "github.com/vedadiyan/protolizer/memory"
+	"github.com/vedadiyan/protolizer/metadata"
+	"github.com/vedadiyan/protolizer/pdk"
 )
 
 type (
 	Reflected interface {
-		Encode(*p.Field, *bytes.Buffer) error
-		Decode(*p.Field, *bytes.Buffer) error
+		Encode(*metadata.Field, *bytes.Buffer) error
+		Decode(*metadata.Field, *bytes.Buffer) error
 		New() Reflected
-		Type() p.Type
-		IsZero(*p.Field) bool
+		Type() metadata.Type
+		IsZero(*metadata.Field) bool
 	}
 	Static struct{}
 )
@@ -20,13 +22,13 @@ type (
 func (*Static) Marshal(v Reflected) ([]byte, error) {
 	typ := v.Type()
 
-	buffer := p.Alloc(0)
-	defer p.Dealloc(buffer)
+	buffer := aloc.Alloc(0)
+	defer aloc.Dealloc(buffer)
 	for _, field := range typ.Fields {
 		if v.IsZero(field) {
 			continue
 		}
-		err := p.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
+		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -41,12 +43,12 @@ func (*Static) Marshal(v Reflected) ([]byte, error) {
 func (*Static) InlineMarshal(v Reflected) (*bytes.Buffer, error) {
 	typ := v.Type()
 
-	buffer := p.Alloc(0)
+	buffer := aloc.Alloc(0)
 	for _, field := range typ.Fields {
 		if v.IsZero(field) {
 			continue
 		}
-		err := p.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
+		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -61,12 +63,12 @@ func (*Static) InlineMarshal(v Reflected) (*bytes.Buffer, error) {
 func (*Static) Unmarshal(data []byte, v Reflected) error {
 	typ := v.Type()
 
-	buffer := p.Alloc(0)
-	defer p.Dealloc(buffer)
+	buffer := aloc.Alloc(0)
+	defer aloc.Dealloc(buffer)
 	buffer.Write(data)
 
 	for buffer.Len() != 0 {
-		fieldNumber, _, err := p.TagDecode(buffer)
+		fieldNumber, _, err := pdk.TagDecode(buffer)
 		if err != nil {
 			return err
 		}
@@ -80,13 +82,13 @@ func (*Static) Unmarshal(data []byte, v Reflected) error {
 
 func (*Static) UnmarshalFromBuffer(v Reflected, data *bytes.Buffer) error {
 	typ := v.Type()
-	l, err := p.UvarintDecode(data)
+	l, err := pdk.UvarintDecode(data)
 	if err != nil {
 		return err
 	}
 	end := data.Len() - int(l)
 	for data.Len() != end {
-		fieldNumber, _, err := p.TagDecode(data)
+		fieldNumber, _, err := pdk.TagDecode(data)
 		if err != nil {
 			return err
 		}

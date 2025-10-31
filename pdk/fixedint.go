@@ -1,13 +1,15 @@
-package protolizer
+package pdk
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	aloc "github.com/vedadiyan/protolizer/memory"
 )
 
 func Fixed32Encode(value int32) *bytes.Buffer {
-	memory := Alloc(4)
+	memory := aloc.Alloc(4)
 	buf := memory.AvailableBuffer()[:4]
 	binary.LittleEndian.PutUint32(buf, uint32(value))
 	memory.Write(buf)
@@ -22,7 +24,7 @@ func Fixed32InlineEncode(value int32, buffer *bytes.Buffer) {
 }
 
 func Fixed64Encode(value int64) *bytes.Buffer {
-	memory := Alloc(8)
+	memory := aloc.Alloc(8)
 	buf := memory.AvailableBuffer()[:8]
 	binary.LittleEndian.PutUint64(buf, uint64(value))
 	memory.Write(buf)

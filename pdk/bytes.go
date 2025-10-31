@@ -1,19 +1,21 @@
-package protolizer
+package pdk
 
 import (
 	"bytes"
 	"fmt"
+
+	aloc "github.com/vedadiyan/protolizer/memory"
 )
 
 func BytesEncode(value []byte) *bytes.Buffer {
-	memory := Alloc(0)
+	memory := aloc.Alloc(0)
 	uvarint(uint64(len(value)), memory)
 	memory.Write(value)
 	return memory
 }
 
 func BufferEncode(value *bytes.Buffer) *bytes.Buffer {
-	memory := Alloc(0)
+	memory := aloc.Alloc(0)
 	uvarint(uint64(value.Len()), memory)
 	value.WriteTo(memory)
 	return memory
