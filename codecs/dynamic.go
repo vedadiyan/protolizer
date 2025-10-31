@@ -86,14 +86,14 @@ func (d *Dynamic) encode(field *p.Field) func(v reflect.Value, buffer *bytes.Buf
 	case k >= 2 && k <= 6:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				SignedNumberInlineEncoder(v.Int(), field, buffer)
+				p.SignedNumberInlineEncoder(v.Int(), field, buffer)
 				return nil
 			}
 		}
 	case k >= 7 && k <= 11:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				UnsignedNumberInlineEncoder(v.Uint(), field, buffer)
+				p.UnsignedNumberInlineEncoder(v.Uint(), field, buffer)
 				return nil
 			}
 		}
