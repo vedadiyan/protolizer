@@ -678,14 +678,12 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := Alloc(0)
 					innerBuffer.Write(bytes)
 					defer Dealloc(innerBuffer)
-					array := reflect.MakeSlice(arrayType, 0, 0)
 					for innerBuffer.Len() != 0 {
 						if err := fn(value, innerBuffer); err != nil {
 							return nil
 						}
-						array = reflect.Append(array, value)
+						v.Set(reflect.Append(v, value))
 					}
-					v.Set(array)
 					return nil
 				}
 			}
@@ -701,7 +699,6 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					elemType = arrayType.Elem()
 				})
 				value := reflect.New(elemType).Elem()
-				array := reflect.MakeSlice(arrayType, 0, 0)
 				i := 0
 				for {
 					if i != 0 {
@@ -722,9 +719,8 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					if err := fn(value, buffer); err != nil {
 						return nil
 					}
-					array = reflect.Append(array, value)
+					v.Set(reflect.Append(v, value))
 				}
-				v.Set(array)
 				return nil
 			}
 		}
