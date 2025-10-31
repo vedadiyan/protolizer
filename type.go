@@ -394,7 +394,7 @@ func BuildEncoder(t reflect.Type) func(any) ([]byte, error) {
 			if field.IsPointer {
 				value = value.Elem()
 			}
-			_, _ = buffer.Write(field.Tag)
+			IgnoreReturn(buffer.Write(field.Tag))
 			if err := out[field.Tags.Protobuf.FieldNum](value, buffer); err != nil {
 				return nil, err
 			}
@@ -447,18 +447,18 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					bytes := BytesEncode(v.Bytes())
 					defer Dealloc(bytes)
-					_, _ = bytes.WriteTo(buffer)
+					IgnoreReturn(bytes.WriteTo(buffer))
 					return nil
 				}
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == WireTypeVarint || w == WireTypeI32 || w == WireTypeI64 {
+				f := *field
+				f.Kind = f.Index
+				fn := Encode(&f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := Alloc(0)
 					defer Dealloc(innerBuffer)
-					f := *field
-					f.Kind = f.Index
-					fn := Encode(&f)
 					for i := range v.Len() {
 						x := v.Index(i)
 						fn(x, innerBuffer)
@@ -469,15 +469,15 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					return nil
 				}
 			}
+			f := *field
+			f.Kind = f.Index
+			fn := Encode(&f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := TagEncode(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
 				defer Dealloc(tag)
 				if err != nil {
 					return err
 				}
-				f := *field
-				f.Kind = f.Index
-				fn := Encode(&f)
 				for i := range v.Len() {
 					if i != 0 {
 						buffer.Write(tag.Bytes())
@@ -490,6 +490,14 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 		}
 	case k == 21:
 		{
+			kf := *field
+			kf.Tags.Protobuf.WireType = kf.Tags.MapKey
+			kf.Kind = kf.Key
+			kv := *field
+			kv.Tags.Protobuf.WireType = kv.Tags.MapValue
+			kv.Kind = kv.Index
+			kfn := Encode(&kf)
+			vfn := Encode(&kv)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := TagEncode(int32(field.Tags.Protobuf.FieldNum), WireTypeLen)
 				defer Dealloc(tag)
@@ -498,14 +506,6 @@ func Encode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 				}
 				i := 0
 				r := v.MapRange()
-				kf := *field
-				kf.Tags.Protobuf.WireType = kf.Tags.MapKey
-				kf.Kind = kf.Key
-				kv := *field
-				kv.Tags.Protobuf.WireType = kv.Tags.MapValue
-				kv.Kind = kv.Index
-				kfn := Encode(&kf)
-				vfn := Encode(&kv)
 				for r.Next() {
 					key := r.Key()
 					value := r.Value()
