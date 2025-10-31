@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type (
@@ -658,20 +659,26 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == WireTypeVarint || w == WireTypeI32 || w == WireTypeI64 {
+				var arrayType reflect.Type
+				var elemType reflect.Type
+				var once sync.Once
+				f := *field
+				f.Kind = f.Index
+				fn := Deode(&f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
+					once.Do(func() {
+						arrayType = v.Type()
+						elemType = arrayType.Elem()
+					})
+					value := reflect.New(elemType).Elem()
 					bytes, err := BytesDecode(buffer)
 					if err != nil {
 						return err
 					}
-					t := v.Type().Elem()
-					f := *field
-					f.Kind = f.Index
 					innerBuffer := Alloc(0)
 					innerBuffer.Write(bytes)
 					defer Dealloc(innerBuffer)
-					fn := Deode(&f)
-					array := reflect.MakeSlice(v.Type(), 0, 0)
-					value := reflect.New(t).Elem()
+					array := reflect.MakeSlice(arrayType, 0, 0)
 					for innerBuffer.Len() != 0 {
 						if err := fn(value, innerBuffer); err != nil {
 							return nil
@@ -682,14 +689,20 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 					return nil
 				}
 			}
+			var arrayType reflect.Type
+			var elemType reflect.Type
+			var once sync.Once
+			f := *field
+			f.Kind = f.Index
+			fn := Deode(&f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
+				once.Do(func() {
+					arrayType = v.Type()
+					elemType = arrayType.Elem()
+				})
+				value := reflect.New(elemType).Elem()
+				array := reflect.MakeSlice(arrayType, 0, 0)
 				i := 0
-				t := v.Type().Elem()
-				f := *field
-				f.Kind = f.Index
-				fn := Deode(&f)
-				array := reflect.MakeSlice(v.Type(), 0, 0)
-				value := reflect.New(t).Elem()
 				for {
 					if i != 0 {
 						i, _, read, err := TagPeek(buffer)
@@ -717,20 +730,28 @@ func Deode(field *Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 		}
 	case k == 21:
 		{
+			var kt reflect.Type
+			var vt reflect.Type
+			var mapType reflect.Type
+			var mapper reflect.Value
+			var once sync.Once
+			kf := *field
+			kf.Kind = kf.Key
+			vf := *field
+			vf.Kind = vf.Index
+			kfn := Deode(&kf)
+			vfn := Deode(&vf)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				t := v.Type()
-				kt := t.Key()
-				vt := t.Elem()
-				kf := *field
-				kf.Kind = kf.Key
-				vf := *field
-				vf.Kind = vf.Index
-				kfn := Deode(&kf)
-				vfn := Deode(&vf)
-				mapper := reflect.MakeMap(reflect.MapOf(kt, vt))
-				i := 0
+				once.Do(func() {
+					t := v.Type()
+					kt = t.Key()
+					vt = t.Elem()
+					mapType = reflect.MapOf(kt, vt)
+				})
 				key := reflect.New(kt).Elem()
 				value := reflect.New(vt).Elem()
+				mapper = reflect.MakeMap(mapType)
+				i := 0
 				for {
 					if i != 0 {
 						i, _, read, err := TagPeek(buffer)
