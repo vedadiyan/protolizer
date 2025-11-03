@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"sync"
 
 	aloc "github.com/vedadiyan/protolizer/memory"
 	"github.com/vedadiyan/protolizer/metadata"
@@ -14,53 +13,52 @@ import (
 )
 
 type (
-	Dynamic struct {
-		_builtEncoders map[string]func(any) ([]byte, error)
-		_builtDecoders map[string]func(*bytes.Buffer, any) error
+	Typeless struct {
+		_builtEncoders map[string]func(map[string]any) ([]byte, error)
+		_builtDecoders map[string]func(*bytes.Buffer) (any, error)
 	}
 )
 
-func NewDynamic() *Dynamic {
-	out := new(Dynamic)
-	out._builtEncoders = make(map[string]func(any) ([]byte, error))
-	out._builtDecoders = make(map[string]func(*bytes.Buffer, any) error)
+func NewTypeless() *Typeless {
+	out := new(Typeless)
+	out._builtEncoders = make(map[string]func(map[string]any) ([]byte, error))
+	out._builtDecoders = make(map[string]func(*bytes.Buffer) (any, error))
 	return out
 }
 
-func (d *Dynamic) Marshal(v any) ([]byte, error) {
-	if encoder, ok := d._builtEncoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
+func (tl *Typeless) Marshal(v map[string]any, t metadata.Type) ([]byte, error) {
+	if encoder, ok := tl._builtEncoders[t.Name]; ok {
 		return encoder(v)
 	}
 	return nil, fmt.Errorf("type %T has not been registered", v)
 }
 
-func (d *Dynamic) Unmarshal(data []byte, v any) error {
-	if decoder, ok := d._builtDecoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
-		return decoder(bytes.NewBuffer(data), v)
+func (tl *Typeless) Unmarshal(data []byte, v any) (any, error) {
+	if decoder, ok := tl._builtDecoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
+		return decoder(bytes.NewBuffer(data))
 	}
-	return fmt.Errorf("type %T has not been registered", v)
+	return nil, fmt.Errorf("type %T has not been registered", v)
 }
 
-func (d *Dynamic) Register(t reflect.Type) {
-	_ = d.buildEncoder(t)
-	_ = d.buildDecoder(t)
+func (tl *Typeless) Register(t metadata.Type) {
+	_ = tl.buildEncoder(t)
+	_ = tl.buildDecoder(t)
 }
 
-func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
-	typ := metadata.CaptureType(t)
+func (tl *Typeless) buildEncoder(t metadata.Type) func(map[string]any) ([]byte, error) {
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
-	for index, field := range typ.FieldsIndexer {
-		out[index] = d.encode(field)
+	for index, field := range t.FieldsIndexer {
+		out[index] = tl.encode(field)
 	}
-	d._builtEncoders[metadata.TypeName(t)] = func(in any) ([]byte, error) {
+	tl._builtEncoders[t.Name] = func(in map[string]any) ([]byte, error) {
 		buffer := aloc.Alloc(0)
 		defer aloc.Dealloc(buffer)
-		v := reflect.ValueOf(in)
-		if v.Kind() == reflect.Ptr {
-			v = v.Elem()
-		}
-		for _, field := range typ.Fields {
-			value := v.FieldByIndex(field.FieldIndex)
+		for _, field := range t.Fields {
+			v, ok := in[field.Name]
+			if !ok {
+				continue
+			}
+			value := reflect.ValueOf(v)
 			if value.IsZero() {
 				continue
 			}
@@ -74,10 +72,10 @@ func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
 		}
 		return bytes.Clone(buffer.Bytes()), nil
 	}
-	return d._builtEncoders[metadata.TypeName(t)]
+	return tl._builtEncoders[t.Name]
 }
 
-func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	switch k := field.Kind; {
 	case k == 1:
 		{
@@ -128,7 +126,7 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			if w == pdk.WireTypeVarint || w == pdk.WireTypeI32 || w == pdk.WireTypeI64 {
 				f := *field
 				f.Kind = f.Index
-				fn := d.encode(&f)
+				fn := tl.encode(&f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := aloc.Alloc(0)
 					defer aloc.Dealloc(innerBuffer)
@@ -144,7 +142,7 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			}
 			f := *field
 			f.Kind = f.Index
-			fn := d.encode(&f)
+			fn := tl.encode(&f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -169,8 +167,8 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			kv := *field
 			kv.Tags.Protobuf.WireType = kv.Tags.MapValue
 			kv.Kind = kv.Index
-			kfn := d.encode(&kf)
-			vfn := d.encode(&kv)
+			kfn := tl.encode(&kf)
+			vfn := tl.encode(&kv)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -217,14 +215,7 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 	case k == 25:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := d._builtEncoders[metadata.TypeName(v.Type())](v.Interface())
-				if err != nil {
-					return err
-				}
-				bytes := pdk.BytesEncode(out)
-				defer aloc.Dealloc(bytes)
-				util.IgnoreReturn(bytes.WriteTo(buffer))
-				return nil
+				return fmt.Errorf("typeless coded does not support structs")
 			}
 		}
 	}
@@ -233,153 +224,110 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 	}
 }
 
-func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, any) error {
-	typ := metadata.CaptureType(t)
-	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
-	for index, field := range typ.FieldsIndexer {
-		out[index] = d.deode(field)
+func (tl *Typeless) buildDecoder(t metadata.Type) func(*bytes.Buffer) (any, error) {
+	out := make(map[int]func(*bytes.Buffer) (any, error))
+	for index, field := range t.FieldsIndexer {
+		out[index] = tl.deode(field)
 	}
-	d._builtDecoders[metadata.TypeName(t)] = func(data *bytes.Buffer, v any) error {
-		rv := reflect.ValueOf(v)
-		if rv.Kind() == reflect.Ptr {
-			rv = rv.Elem()
-		}
+	tl._builtDecoders[t.Name] = func(data *bytes.Buffer) (any, error) {
+		mapper := make(map[string]any)
 		for data.Len() != 0 {
 			fieldNumber, _, err := pdk.TagDecode(data)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			field := typ.FieldsIndexer[int(fieldNumber)]
-			if err := out[int(field.Tags.Protobuf.FieldNum)](rv.FieldByIndex(field.FieldIndex), data); err != nil {
-				return err
+			field := t.FieldsIndexer[int(fieldNumber)]
+			value, err := out[int(field.Tags.Protobuf.FieldNum)](data)
+			if err != nil {
+				return nil, err
 			}
+			mapper[field.Name] = value
 
 		}
-		return nil
+		return mapper, nil
 	}
-	return d._builtDecoders[metadata.TypeName(t)]
+	return tl._builtDecoders[t.Name]
 }
 
-func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+func (tl *Typeless) deode(field *metadata.Field) func(buffer *bytes.Buffer) (any, error) {
 	switch k := field.Kind; {
 	case k == 1:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.BoolDecode(buffer)
-				if err != nil {
-					return err
-				}
-				v.SetBool(out)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.BoolDecode(buffer)
 			}
 		}
 	case k >= 2 && k <= 6:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
-				if err != nil {
-					return err
-				}
-				v.SetInt(out)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
+
 			}
 		}
 	case k >= 7 && k <= 11:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.UnsignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
-				if err != nil {
-					return err
-				}
-				v.SetUint(out)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.UnsignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
+
 			}
 		}
 	case k == 13:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.Float32Decode(buffer)
-				if err != nil {
-					return err
-				}
-				v.SetFloat(float64(out))
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.Float32Decode(buffer)
 			}
 		}
 	case k == 14:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.Float64Decode(buffer)
-				if err != nil {
-					return err
-				}
-				v.SetFloat(out)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.Float64Decode(buffer)
 			}
 		}
 	case k == 17 || k == 23:
 		{
 			if field.Index == reflect.Uint8 {
-				return func(v reflect.Value, buffer *bytes.Buffer) error {
-					bytes, err := pdk.BytesDecode(buffer)
-					if err != nil {
-						return err
-					}
-					v.SetBytes(bytes)
-					return nil
+				return func(buffer *bytes.Buffer) (any, error) {
+					return pdk.BytesDecode(buffer)
 				}
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == pdk.WireTypeVarint || w == pdk.WireTypeI32 || w == pdk.WireTypeI64 {
-				var arrayType reflect.Type
-				var elemType reflect.Type
-				var once sync.Once
 				f := *field
 				f.Kind = f.Index
-				fn := d.deode(&f)
-				return func(v reflect.Value, buffer *bytes.Buffer) error {
-					once.Do(func() {
-						arrayType = v.Type()
-						elemType = arrayType.Elem()
-					})
-					value := reflect.New(elemType).Elem()
+				fn := tl.deode(&f)
+				return func(buffer *bytes.Buffer) (any, error) {
+					out := make([]any, 0)
 					bytes, err := pdk.BytesDecode(buffer)
 					if err != nil {
-						return err
+						return nil, err
 					}
 					innerBuffer := aloc.Alloc(0)
 					innerBuffer.Write(bytes)
 					defer aloc.Dealloc(innerBuffer)
 					for innerBuffer.Len() != 0 {
-						if err := fn(value, innerBuffer); err != nil {
-							return err
+						iv, err := fn(innerBuffer)
+						if err != nil {
+							return nil, err
 						}
-						v.Set(reflect.Append(v, value))
+						out = append(out, iv)
 					}
-					return nil
+					return out, nil
 				}
 			}
-			var arrayType reflect.Type
-			var elemType reflect.Type
-			var once sync.Once
 			f := *field
 			f.Kind = f.Index
-			fn := d.deode(&f)
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				once.Do(func() {
-					arrayType = v.Type()
-					elemType = arrayType.Elem()
-				})
-				value := reflect.New(elemType).Elem()
+			fn := tl.deode(&f)
+			return func(buffer *bytes.Buffer) (any, error) {
+				out := make([]any, 0)
 				i := 0
 				for {
 					if i != 0 {
 						i, _, read, err := pdk.TagPeek(buffer)
 						if err != nil {
 							if err == io.EOF {
-								return nil
+								return out, nil
 							}
-							return err
+							return nil, err
 						}
 						if i != int32(field.Tags.Protobuf.FieldNum) {
 							break
@@ -388,46 +336,34 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 					}
 					i++
 
-					if err := fn(value, buffer); err != nil {
-						return nil
+					iv, err := fn(buffer)
+					if err != nil {
+						return nil, err
 					}
-					v.Set(reflect.Append(v, value))
+					out = append(out, iv)
 				}
-				return nil
+				return out, nil
 			}
 		}
 	case k == 21:
 		{
-			var kt reflect.Type
-			var vt reflect.Type
-			var mapType reflect.Type
-			var mapper reflect.Value
-			var once sync.Once
 			kf := *field
 			kf.Kind = kf.Key
 			vf := *field
 			vf.Kind = vf.Index
-			kfn := d.deode(&kf)
-			vfn := d.deode(&vf)
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				once.Do(func() {
-					t := v.Type()
-					kt = t.Key()
-					vt = t.Elem()
-					mapType = reflect.MapOf(kt, vt)
-				})
-				key := reflect.New(kt).Elem()
-				value := reflect.New(vt).Elem()
-				mapper = reflect.MakeMap(mapType)
+			kfn := tl.deode(&kf)
+			vfn := tl.deode(&vf)
+			return func(buffer *bytes.Buffer) (any, error) {
+				mapper := make(map[any]any)
 				i := 0
 				for {
 					if i != 0 {
 						i, _, read, err := pdk.TagPeek(buffer)
 						if err != nil {
 							if err == io.EOF {
-								return nil
+								return mapper, nil
 							}
-							return err
+							return nil, err
 						}
 						if i != int32(field.Tags.Protobuf.FieldNum) {
 							break
@@ -437,64 +373,53 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 					i++
 					bytes, err := pdk.BytesDecode(buffer)
 					if err != nil {
-						return err
+						return nil, err
 					}
 					innerBuffer := aloc.Alloc(0)
 					innerBuffer.Write(bytes)
 					_, _, err = pdk.TagDecode(innerBuffer)
 					if err != nil {
 						aloc.Dealloc(innerBuffer)
-						return err
+						return nil, err
 					}
-
-					if err := kfn(key, innerBuffer); err != nil {
+					ikv, err := kfn(innerBuffer)
+					if err != nil {
 						aloc.Dealloc(innerBuffer)
-						return err
+						return nil, err
 					}
 
 					_, _, err = pdk.TagDecode(innerBuffer)
 					if err != nil {
 						aloc.Dealloc(innerBuffer)
-						return err
+						return nil, err
 					}
 
-					if err := vfn(value, innerBuffer); err != nil {
+					ivv, err := vfn(innerBuffer)
+					if err != nil {
 						aloc.Dealloc(innerBuffer)
-						return err
+						return nil, err
 					}
 
-					mapper.SetMapIndex(key, value)
+					mapper[ikv] = ivv
 					aloc.Dealloc(innerBuffer)
 				}
-				v.Set(mapper)
-				return nil
+				return mapper, nil
 			}
 		}
 	case k == 24:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := pdk.StringDecode(buffer)
-				if err != nil {
-					return err
-				}
-				v.SetString(out)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return pdk.StringDecode(buffer)
 			}
 		}
 	case k == 25:
 		{
-			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				value := reflect.New(v.Type())
-				err := d._builtDecoders[metadata.TypeName(v.Type())](buffer, value.Interface())
-				if err != nil {
-					return err
-				}
-				v.Set(value)
-				return nil
+			return func(buffer *bytes.Buffer) (any, error) {
+				return nil, fmt.Errorf("typeless coded does not support structs")
 			}
 		}
 	}
-	return func(v reflect.Value, buffer *bytes.Buffer) error {
-		return nil
+	return func(buffer *bytes.Buffer) (any, error) {
+		return nil, nil
 	}
 }
