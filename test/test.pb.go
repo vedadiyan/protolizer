@@ -2,7 +2,7 @@
 // versions:
 //
 //	protov        v0.0.1
-//	protolizer    v0.0.1
+//	pdk    v0.0.1
 //
 // source: test.proto
 package test
@@ -13,7 +13,20 @@ import (
 	"io"
 
 	"github.com/vedadiyan/protolizer"
+	"github.com/vedadiyan/protolizer/codecs"
+	"github.com/vedadiyan/protolizer/memory"
+	"github.com/vedadiyan/protolizer/metadata"
+	"github.com/vedadiyan/protolizer/pdk"
 )
+
+var (
+	static codecs.Static
+)
+
+func init() {
+
+	static = *protolizer.StaticCodec()
+}
 
 type SimplePerson struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name"`
@@ -21,32 +34,32 @@ type SimplePerson struct {
 	Id   uint64 `protobuf:"varint,3,opt,name=id,proto3" json:"id"`
 }
 
-func (x *SimplePerson) New() protolizer.Reflected {
+func (x *SimplePerson) New() codecs.Reflected {
 	return new(SimplePerson)
 }
 
-func (x *SimplePerson) Type() protolizer.Type {
-	return *protolizer.CaptureTypeByName("protobench.SimplePerson")
+func (x *SimplePerson) Type() metadata.Type {
+	return *metadata.CaptureTypeByName("protobench.SimplePerson")
 }
 
-func (x *SimplePerson) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *SimplePerson) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			protolizer.StringInlineEncode(x.Name, buffer)
+			pdk.StringInlineEncode(x.Name, buffer)
 			return nil
 		}
 	case 2:
 		{
 
-			protolizer.SignedNumberInlineEncoder(int64(x.Age), field, buffer)
+			pdk.SignedNumberInlineEncoder(int64(x.Age), field.Tags.Protobuf.WireType, buffer)
 			return nil
 		}
 	case 3:
 		{
 
-			protolizer.UnsignedNumberInlineEncoder(uint64(x.Id), field, buffer)
+			pdk.UnsignedNumberInlineEncoder(uint64(x.Id), field.Tags.Protobuf.WireType, buffer)
 			return nil
 		}
 	default:
@@ -56,12 +69,12 @@ func (x *SimplePerson) Encode(field *protolizer.Field, buffer *bytes.Buffer) err
 	}
 }
 
-func (x *SimplePerson) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *SimplePerson) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -71,7 +84,7 @@ func (x *SimplePerson) Decode(field *protolizer.Field, buffer *bytes.Buffer) err
 	case 2:
 		{
 
-			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			value, err := pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
 			if err != nil {
 				return err
 			}
@@ -82,7 +95,7 @@ func (x *SimplePerson) Decode(field *protolizer.Field, buffer *bytes.Buffer) err
 	case 3:
 		{
 
-			value, err := protolizer.UnsignedNumberDecoder(field, buffer)
+			value, err := pdk.UnsignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
 			if err != nil {
 				return err
 			}
@@ -97,7 +110,7 @@ func (x *SimplePerson) Decode(field *protolizer.Field, buffer *bytes.Buffer) err
 	}
 }
 
-func (x *SimplePerson) IsZero(field *protolizer.Field) bool {
+func (x *SimplePerson) IsZero(field *metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -122,7 +135,7 @@ func (x *SimplePerson) IsZero(field *protolizer.Field) bool {
 }
 
 func init() {
-	protolizer.RegisterTypeAs[SimplePerson]("protobench.SimplePerson")
+	metadata.RegisterTypeAs[SimplePerson]("protobench.SimplePerson")
 }
 
 type ComplexMessage struct {
@@ -137,51 +150,51 @@ type ComplexMessage struct {
 	Timestamp int64             `protobuf:"varint,9,opt,name=timestamp,proto3" json:"timestamp"`
 }
 
-func (x *ComplexMessage) New() protolizer.Reflected {
+func (x *ComplexMessage) New() codecs.Reflected {
 	return new(ComplexMessage)
 }
 
-func (x *ComplexMessage) Type() protolizer.Type {
-	return *protolizer.CaptureTypeByName("protobench.ComplexMessage")
+func (x *ComplexMessage) Type() metadata.Type {
+	return *metadata.CaptureTypeByName("protobench.ComplexMessage")
 }
 
-func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			protolizer.UnsignedNumberInlineEncoder(uint64(x.Id), field, buffer)
+			pdk.UnsignedNumberInlineEncoder(uint64(x.Id), field.Tags.Protobuf.WireType, buffer)
 			return nil
 		}
 	case 2:
 		{
 
-			protolizer.StringInlineEncode(x.Name, buffer)
+			pdk.StringInlineEncode(x.Name, buffer)
 			return nil
 		}
 	case 3:
 		{
 
-			protolizer.StringInlineEncode(x.Email, buffer)
+			pdk.StringInlineEncode(x.Email, buffer)
 			return nil
 		}
 	case 4:
 		{
 
-			protolizer.Float64InlineEncode(float64(x.Score), buffer)
+			pdk.Float64InlineEncode(float64(x.Score), buffer)
 			return nil
 		}
 	case 5:
 		{
 
-			protolizer.BoolInlineEncode(x.IsActive, buffer)
+			pdk.BoolInlineEncode(x.IsActive, buffer)
 			return nil
 		}
 	case 6:
 		{
 
-			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
-			defer protolizer.Dealloc(tag)
+			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
+			defer memory.Dealloc(tag)
 			if err != nil {
 				return err
 			}
@@ -189,28 +202,28 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				protolizer.StringInlineEncode(x, buffer)
+				pdk.StringInlineEncode(x, buffer)
 			}
 			return nil
 		}
 	case 7:
 		{
 
-			innerBuffer := protolizer.Alloc(0)
-			defer protolizer.Dealloc(innerBuffer)
+			innerBuffer := memory.Alloc(0)
+			defer memory.Dealloc(innerBuffer)
 			for _, value := range x.Numbers {
-				protolizer.SignedNumberInlineEncoder(int64(value), field, innerBuffer)
+				pdk.SignedNumberInlineEncoder(int64(value), field.Tags.Protobuf.WireType, innerBuffer)
 			}
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := pdk.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
-			protolizer.Dealloc(bytes)
+			memory.Dealloc(bytes)
 			return nil
 		}
 	case 8:
 		{
 
-			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
-			defer protolizer.Dealloc(tag)
+			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
+			defer memory.Dealloc(tag)
 			if err != nil {
 				return err
 			}
@@ -220,25 +233,25 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 					buffer.Write(tag.Bytes())
 				}
 				i++
-				innerBuffer := protolizer.Alloc(0)
+				innerBuffer := memory.Alloc(0)
 				innerBuffer.Write(field.KeyTag)
 
-				protolizer.StringInlineEncode(key, innerBuffer)
+				pdk.StringInlineEncode(key, innerBuffer)
 				innerBuffer.Write(field.ValueTag)
 
-				protolizer.StringInlineEncode(value, innerBuffer)
+				pdk.StringInlineEncode(value, innerBuffer)
 
-				bytes := protolizer.BufferEncode(innerBuffer)
+				bytes := pdk.BufferEncode(innerBuffer)
 				bytes.WriteTo(buffer)
-				protolizer.Dealloc(innerBuffer)
-				protolizer.Dealloc(bytes)
+				memory.Dealloc(innerBuffer)
+				memory.Dealloc(bytes)
 			}
 			return nil
 		}
 	case 9:
 		{
 
-			protolizer.SignedNumberInlineEncoder(int64(x.Timestamp), field, buffer)
+			pdk.SignedNumberInlineEncoder(int64(x.Timestamp), field.Tags.Protobuf.WireType, buffer)
 			return nil
 		}
 	default:
@@ -248,12 +261,12 @@ func (x *ComplexMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) e
 	}
 }
 
-func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *ComplexMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			value, err := protolizer.UnsignedNumberDecoder(field, buffer)
+			value, err := pdk.UnsignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
 			if err != nil {
 				return err
 			}
@@ -264,7 +277,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	case 2:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -274,7 +287,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	case 3:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -284,7 +297,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	case 4:
 		{
 
-			value, err := protolizer.DoubleDecoder(field, buffer)
+			value, err := pdk.Float64Decode(buffer)
 			if err != nil {
 				return err
 			}
@@ -295,7 +308,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	case 5:
 		{
 
-			value, err := protolizer.BooleanDecoder(field, buffer)
+			value, err := pdk.BoolDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -308,7 +321,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 			i := 0
 			for {
 				if i != 0 {
-					i, _, read, err := protolizer.TagPeek(buffer)
+					i, _, read, err := pdk.TagPeek(buffer)
 					if err != nil {
 						if err == io.EOF {
 							return nil
@@ -321,7 +334,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 					read()
 				}
 				i++
-				value, err := protolizer.StringDecode(buffer)
+				value, err := pdk.StringDecode(buffer)
 				if err != nil {
 					return nil
 				}
@@ -332,15 +345,15 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	case 7:
 		{
 
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			innerBuffer := protolizer.Alloc(0)
+			innerBuffer := memory.Alloc(0)
 			innerBuffer.Write(bytes)
-			defer protolizer.Dealloc(innerBuffer)
+			defer memory.Dealloc(innerBuffer)
 			for innerBuffer.Len() != 0 {
-				value, err := protolizer.SignedNumberDecoder(field, innerBuffer)
+				value, err := pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, innerBuffer)
 				if err != nil {
 					return err
 				}
@@ -355,7 +368,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 			i := 0
 			for {
 				if i != 0 {
-					i, _, read, err := protolizer.TagPeek(buffer)
+					i, _, read, err := pdk.TagPeek(buffer)
 					if err != nil {
 						if err == io.EOF {
 							return nil
@@ -368,43 +381,43 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 					read()
 				}
 				i++
-				bytes, err := protolizer.BytesDecode(buffer)
+				bytes, err := pdk.BytesDecode(buffer)
 				if err != nil {
 					return nil
 				}
-				innerBuffer := protolizer.Alloc(0)
+				innerBuffer := memory.Alloc(0)
 				innerBuffer.Write(bytes)
-				_, _, err = protolizer.TagDecode(innerBuffer)
+				_, _, err = pdk.TagDecode(innerBuffer)
 				if err != nil {
-					protolizer.Dealloc(innerBuffer)
+					memory.Dealloc(innerBuffer)
 					return err
 				}
 
-				key, err := protolizer.StringDecoder(field, innerBuffer)
+				key, err := pdk.StringDecode(innerBuffer)
 				if err != nil {
 					return err
 				}
 
-				_, _, err = protolizer.TagDecode(innerBuffer)
+				_, _, err = pdk.TagDecode(innerBuffer)
 				if err != nil {
-					protolizer.Dealloc(innerBuffer)
+					memory.Dealloc(innerBuffer)
 					return err
 				}
 
-				value, err := protolizer.StringDecoder(field, innerBuffer)
+				value, err := pdk.StringDecode(innerBuffer)
 				if err != nil {
 					return err
 				}
 
 				x.Metadata[string(key)] = string(value)
-				protolizer.Dealloc(innerBuffer)
+				memory.Dealloc(innerBuffer)
 			}
 			return nil
 		}
 	case 9:
 		{
 
-			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			value, err := pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
 			if err != nil {
 				return err
 			}
@@ -419,7 +432,7 @@ func (x *ComplexMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) e
 	}
 }
 
-func (x *ComplexMessage) IsZero(field *protolizer.Field) bool {
+func (x *ComplexMessage) IsZero(field *metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -474,7 +487,7 @@ func (x *ComplexMessage) IsZero(field *protolizer.Field) bool {
 }
 
 func init() {
-	protolizer.RegisterTypeAs[ComplexMessage]("protobench.ComplexMessage")
+	metadata.RegisterTypeAs[ComplexMessage]("protobench.ComplexMessage")
 }
 
 type AddressInfo struct {
@@ -484,38 +497,38 @@ type AddressInfo struct {
 	Country string `protobuf:"bytes,4,opt,name=country,proto3" json:"country"`
 }
 
-func (x *AddressInfo) New() protolizer.Reflected {
+func (x *AddressInfo) New() codecs.Reflected {
 	return new(AddressInfo)
 }
 
-func (x *AddressInfo) Type() protolizer.Type {
-	return *protolizer.CaptureTypeByName("protobench.AddressInfo")
+func (x *AddressInfo) Type() metadata.Type {
+	return *metadata.CaptureTypeByName("protobench.AddressInfo")
 }
 
-func (x *AddressInfo) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *AddressInfo) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			protolizer.StringInlineEncode(x.Street, buffer)
+			pdk.StringInlineEncode(x.Street, buffer)
 			return nil
 		}
 	case 2:
 		{
 
-			protolizer.StringInlineEncode(x.City, buffer)
+			pdk.StringInlineEncode(x.City, buffer)
 			return nil
 		}
 	case 3:
 		{
 
-			protolizer.StringInlineEncode(x.Zipcode, buffer)
+			pdk.StringInlineEncode(x.Zipcode, buffer)
 			return nil
 		}
 	case 4:
 		{
 
-			protolizer.StringInlineEncode(x.Country, buffer)
+			pdk.StringInlineEncode(x.Country, buffer)
 			return nil
 		}
 	default:
@@ -525,12 +538,12 @@ func (x *AddressInfo) Encode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	}
 }
 
-func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *AddressInfo) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -540,7 +553,7 @@ func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	case 2:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -550,7 +563,7 @@ func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	case 3:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -560,7 +573,7 @@ func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	case 4:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -574,7 +587,7 @@ func (x *AddressInfo) Decode(field *protolizer.Field, buffer *bytes.Buffer) erro
 	}
 }
 
-func (x *AddressInfo) IsZero(field *protolizer.Field) bool {
+func (x *AddressInfo) IsZero(field *metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -604,7 +617,7 @@ func (x *AddressInfo) IsZero(field *protolizer.Field) bool {
 }
 
 func init() {
-	protolizer.RegisterTypeAs[AddressInfo]("protobench.AddressInfo")
+	metadata.RegisterTypeAs[AddressInfo]("protobench.AddressInfo")
 }
 
 type ExtraData struct {
@@ -614,52 +627,52 @@ type ExtraData struct {
 	Config   []float64 `protobuf:"fixed64,4,rep,packed,name=config,proto3" json:"config"`
 }
 
-func (x *ExtraData) New() protolizer.Reflected {
+func (x *ExtraData) New() codecs.Reflected {
 	return new(ExtraData)
 }
 
-func (x *ExtraData) Type() protolizer.Type {
-	return *protolizer.CaptureTypeByName("protobench.ExtraData")
+func (x *ExtraData) Type() metadata.Type {
+	return *metadata.CaptureTypeByName("protobench.ExtraData")
 }
 
-func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *ExtraData) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			protolizer.StringInlineEncode(x.Notes, buffer)
+			pdk.StringInlineEncode(x.Notes, buffer)
 			return nil
 		}
 	case 2:
 		{
 
-			protolizer.SignedNumberInlineEncoder(int64(x.Priority), field, buffer)
+			pdk.SignedNumberInlineEncoder(int64(x.Priority), field.Tags.Protobuf.WireType, buffer)
 			return nil
 		}
 	case 3:
 		{
 
-			innerBuffer := protolizer.Alloc(0)
-			defer protolizer.Dealloc(innerBuffer)
+			innerBuffer := memory.Alloc(0)
+			defer memory.Dealloc(innerBuffer)
 			for _, value := range x.Flags {
-				protolizer.BoolInlineEncode(value, innerBuffer)
+				pdk.BoolInlineEncode(value, innerBuffer)
 			}
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := pdk.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
-			protolizer.Dealloc(bytes)
+			memory.Dealloc(bytes)
 			return nil
 		}
 	case 4:
 		{
 
-			innerBuffer := protolizer.Alloc(0)
-			defer protolizer.Dealloc(innerBuffer)
+			innerBuffer := memory.Alloc(0)
+			defer memory.Dealloc(innerBuffer)
 			for _, value := range x.Config {
-				protolizer.Float64InlineEncode(value, innerBuffer)
+				pdk.Float64InlineEncode(value, innerBuffer)
 			}
-			bytes := protolizer.BufferEncode(innerBuffer)
+			bytes := pdk.BufferEncode(innerBuffer)
 			bytes.WriteTo(buffer)
-			protolizer.Dealloc(bytes)
+			memory.Dealloc(bytes)
 			return nil
 		}
 	default:
@@ -669,12 +682,12 @@ func (x *ExtraData) Encode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	}
 }
 
-func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *ExtraData) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			value, err := protolizer.StringDecoder(field, buffer)
+			value, err := pdk.StringDecode(buffer)
 			if err != nil {
 				return err
 			}
@@ -684,7 +697,7 @@ func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	case 2:
 		{
 
-			value, err := protolizer.SignedNumberDecoder(field, buffer)
+			value, err := pdk.SignedNumberDecoder(field.Tags.Protobuf.WireType, buffer)
 			if err != nil {
 				return err
 			}
@@ -695,15 +708,15 @@ func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	case 3:
 		{
 
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			innerBuffer := protolizer.Alloc(0)
+			innerBuffer := memory.Alloc(0)
 			innerBuffer.Write(bytes)
-			defer protolizer.Dealloc(innerBuffer)
+			defer memory.Dealloc(innerBuffer)
 			for innerBuffer.Len() != 0 {
-				value, err := protolizer.BooleanDecoder(field, innerBuffer)
+				value, err := pdk.BoolDecode(innerBuffer)
 				if err != nil {
 					return err
 				}
@@ -714,15 +727,15 @@ func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	case 4:
 		{
 
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			innerBuffer := protolizer.Alloc(0)
+			innerBuffer := memory.Alloc(0)
 			innerBuffer.Write(bytes)
-			defer protolizer.Dealloc(innerBuffer)
+			defer memory.Dealloc(innerBuffer)
 			for innerBuffer.Len() != 0 {
-				value, err := protolizer.DoubleDecoder(field, innerBuffer)
+				value, err := pdk.Float32Decode(innerBuffer)
 				if err != nil {
 					return err
 				}
@@ -737,7 +750,7 @@ func (x *ExtraData) Decode(field *protolizer.Field, buffer *bytes.Buffer) error 
 	}
 }
 
-func (x *ExtraData) IsZero(field *protolizer.Field) bool {
+func (x *ExtraData) IsZero(field *metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -767,7 +780,7 @@ func (x *ExtraData) IsZero(field *protolizer.Field) bool {
 }
 
 func init() {
-	protolizer.RegisterTypeAs[ExtraData]("protobench.ExtraData")
+	metadata.RegisterTypeAs[ExtraData]("protobench.ExtraData")
 }
 
 type NestedMessage struct {
@@ -778,49 +791,49 @@ type NestedMessage struct {
 	PersonArray []SimplePerson `protobuf:"bytes,5,rep,name=personArray,proto3" json:"personArray"`
 }
 
-func (x *NestedMessage) New() protolizer.Reflected {
+func (x *NestedMessage) New() codecs.Reflected {
 	return new(NestedMessage)
 }
 
-func (x *NestedMessage) Type() protolizer.Type {
-	return *protolizer.CaptureTypeByName("protobench.NestedMessage")
+func (x *NestedMessage) Type() metadata.Type {
+	return *metadata.CaptureTypeByName("protobench.NestedMessage")
 }
 
-func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
-			data, err := protolizer.FastInlineMarshal(x.Person)
-			defer protolizer.Dealloc(data)
+			data, err := static.InlineMarshal(x.Person)
+			defer memory.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
-			defer protolizer.Dealloc(bytes)
+			bytes := pdk.BufferEncode(data)
+			defer memory.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
 		}
 	case 2:
 		{
 
-			data, err := protolizer.FastInlineMarshal(x.Address)
-			defer protolizer.Dealloc(data)
+			data, err := static.InlineMarshal(x.Address)
+			defer memory.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
-			defer protolizer.Dealloc(bytes)
+			bytes := pdk.BufferEncode(data)
+			defer memory.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
 		}
 	case 3:
 		{
 
-			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
-			defer protolizer.Dealloc(tag)
+			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
+			defer memory.Dealloc(tag)
 			if err != nil {
 				return err
 			}
@@ -828,29 +841,29 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				protolizer.StringInlineEncode(x, buffer)
+				pdk.StringInlineEncode(x, buffer)
 			}
 			return nil
 		}
 	case 4:
 		{
 
-			data, err := protolizer.FastInlineMarshal(x.Extra)
-			defer protolizer.Dealloc(data)
+			data, err := static.InlineMarshal(x.Extra)
+			defer memory.Dealloc(data)
 			if err != nil {
 				return err
 			}
 
-			bytes := protolizer.BufferEncode(data)
-			defer protolizer.Dealloc(bytes)
+			bytes := pdk.BufferEncode(data)
+			defer memory.Dealloc(bytes)
 			bytes.WriteTo(buffer)
 			return nil
 		}
 	case 5:
 		{
 
-			tag, err := protolizer.TagEncode(int32(field.Tags.Protobuf.FieldNum), protolizer.WireTypeLen)
-			defer protolizer.Dealloc(tag)
+			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
+			defer memory.Dealloc(tag)
 			if err != nil {
 				return err
 			}
@@ -858,14 +871,14 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 				if i != 0 {
 					buffer.Write(tag.Bytes())
 				}
-				data, err := protolizer.FastInlineMarshal(&value)
+				data, err := static.InlineMarshal(&value)
 				if err != nil {
 					return err
 				}
-				bytes := protolizer.BufferEncode(data)
+				bytes := pdk.BufferEncode(data)
 				bytes.WriteTo(buffer)
-				protolizer.Dealloc(data)
-				protolizer.Dealloc(bytes)
+				memory.Dealloc(data)
+				memory.Dealloc(bytes)
 			}
 			return nil
 		}
@@ -876,17 +889,17 @@ func (x *NestedMessage) Encode(field *protolizer.Field, buffer *bytes.Buffer) er
 	}
 }
 
-func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) error {
+func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
 
 			value := new(SimplePerson)
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			err = protolizer.FastUnmarshal(bytes, value)
+			err = static.Unmarshal(bytes, value)
 			if err != nil {
 				return err
 			}
@@ -897,11 +910,11 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 		{
 
 			value := new(AddressInfo)
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			err = protolizer.FastUnmarshal(bytes, value)
+			err = static.Unmarshal(bytes, value)
 			if err != nil {
 				return err
 			}
@@ -914,7 +927,7 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 			i := 0
 			for {
 				if i != 0 {
-					i, _, read, err := protolizer.TagPeek(buffer)
+					i, _, read, err := pdk.TagPeek(buffer)
 					if err != nil {
 						if err == io.EOF {
 							return nil
@@ -927,7 +940,7 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 					read()
 				}
 				i++
-				value, err := protolizer.StringDecode(buffer)
+				value, err := pdk.StringDecode(buffer)
 				if err != nil {
 					return nil
 				}
@@ -939,11 +952,11 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 		{
 
 			value := new(ExtraData)
-			bytes, err := protolizer.BytesDecode(buffer)
+			bytes, err := pdk.BytesDecode(buffer)
 			if err != nil {
 				return err
 			}
-			err = protolizer.FastUnmarshal(bytes, value)
+			err = static.Unmarshal(bytes, value)
 			if err != nil {
 				return err
 			}
@@ -956,7 +969,7 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 			i := 0
 			for {
 				if i != 0 {
-					i, _, read, err := protolizer.TagPeek(buffer)
+					i, _, read, err := pdk.TagPeek(buffer)
 					if err != nil {
 						if err == io.EOF {
 							return nil
@@ -969,15 +982,15 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 					read()
 				}
 				i++
-				data, err := protolizer.BytesDecode(buffer)
+				data, err := pdk.BytesDecode(buffer)
 				if err != nil {
 					return err
 				}
-				bytes := protolizer.Alloc(0)
+				bytes := memory.Alloc(0)
 				value := new(SimplePerson)
 				bytes.Write(data)
-				err = protolizer.FastUnmarshal(data, value)
-				protolizer.Dealloc(bytes)
+				err = static.Unmarshal(data, value)
+				memory.Dealloc(bytes)
 				if err != nil {
 					return nil
 				}
@@ -992,7 +1005,7 @@ func (x *NestedMessage) Decode(field *protolizer.Field, buffer *bytes.Buffer) er
 	}
 }
 
-func (x *NestedMessage) IsZero(field *protolizer.Field) bool {
+func (x *NestedMessage) IsZero(field *metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -1027,5 +1040,5 @@ func (x *NestedMessage) IsZero(field *protolizer.Field) bool {
 }
 
 func init() {
-	protolizer.RegisterTypeAs[NestedMessage]("protobench.NestedMessage")
+	metadata.RegisterTypeAs[NestedMessage]("protobench.NestedMessage")
 }
