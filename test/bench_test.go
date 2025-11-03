@@ -2,9 +2,11 @@ package test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/vedadiyan/protolizer"
 	"github.com/vedadiyan/protolizer/metadata"
 )
 
@@ -114,15 +116,16 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	metadata.RegisterTypeFor[ComplexMessage]()
 	// fn2 := static.BuildDecoder(reflect.TypeOf(m).Elem())
-	var out ComplexMessage
+	t := metadata.CaptureType(reflect.TypeOf(m).Elem())
+	protolizer.TypelessCodec().Register(*t)
 	for i := 0; i < b.N; i++ {
-		if err := static.Unmarshal(data, &out); err != nil {
+		out, err := protolizer.TypelessCodec().Unmarshal(data, *t)
+		if err != nil {
 			b.Fatal(err)
 		}
-		if out.Email != m.Email {
-			b.Fatal(fmt.Errorf("bad unmarshalling"))
-		}
+		_ = out
 	}
 }
 

@@ -33,11 +33,11 @@ func (tl *Typeless) Marshal(v map[string]any, t metadata.Type) ([]byte, error) {
 	return nil, fmt.Errorf("type %T has not been registered", v)
 }
 
-func (tl *Typeless) Unmarshal(data []byte, v any) (any, error) {
-	if decoder, ok := tl._builtDecoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
+func (tl *Typeless) Unmarshal(data []byte, t metadata.Type) (any, error) {
+	if decoder, ok := tl._builtDecoders[t.Name]; ok {
 		return decoder(bytes.NewBuffer(data))
 	}
-	return nil, fmt.Errorf("type %T has not been registered", v)
+	return nil, fmt.Errorf("type %s has not been registered", t.Name)
 }
 
 func (tl *Typeless) Register(t metadata.Type) {
