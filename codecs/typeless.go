@@ -26,26 +26,26 @@ func NewTypeless() *Typeless {
 	return out
 }
 
-func (tl *Typeless) Marshal(v map[string]any, t metadata.Type) ([]byte, error) {
+func (tl *Typeless) Marshal(v map[string]any, t *metadata.Type) ([]byte, error) {
 	if encoder, ok := tl._builtEncoders[t.Name]; ok {
 		return encoder(v)
 	}
 	return nil, fmt.Errorf("type %T has not been registered", v)
 }
 
-func (tl *Typeless) Unmarshal(data []byte, t metadata.Type) (any, error) {
+func (tl *Typeless) Unmarshal(data []byte, t *metadata.Type) (any, error) {
 	if decoder, ok := tl._builtDecoders[t.Name]; ok {
 		return decoder(bytes.NewBuffer(data))
 	}
 	return nil, fmt.Errorf("type %s has not been registered", t.Name)
 }
 
-func (tl *Typeless) Register(t metadata.Type) {
+func (tl *Typeless) Register(t *metadata.Type) {
 	_ = tl.buildEncoder(t)
 	_ = tl.buildDecoder(t)
 }
 
-func (tl *Typeless) buildEncoder(t metadata.Type) func(map[string]any) ([]byte, error) {
+func (tl *Typeless) buildEncoder(t *metadata.Type) func(map[string]any) ([]byte, error) {
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range t.FieldsIndexer {
 		out[index] = tl.encode(field)
@@ -224,7 +224,7 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 	}
 }
 
-func (tl *Typeless) buildDecoder(t metadata.Type) func(*bytes.Buffer) (any, error) {
+func (tl *Typeless) buildDecoder(t *metadata.Type) func(*bytes.Buffer) (any, error) {
 	out := make(map[int]func(*bytes.Buffer) (any, error))
 	for index, field := range t.FieldsIndexer {
 		out[index] = tl.deode(field)

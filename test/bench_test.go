@@ -119,9 +119,9 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	metadata.RegisterTypeFor[ComplexMessage]()
 	// fn2 := static.BuildDecoder(reflect.TypeOf(m).Elem())
 	t := metadata.CaptureType(reflect.TypeOf(m).Elem())
-	protolizer.TypelessCodec().Register(*t)
+	protolizer.TypelessCodec().Register(t)
 	for i := 0; i < b.N; i++ {
-		out, err := protolizer.TypelessCodec().Unmarshal(data, *t)
+		out, err := protolizer.TypelessCodec().Unmarshal(data, t)
 		if err != nil {
 			b.Fatal(err)
 		}
