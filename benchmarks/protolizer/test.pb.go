@@ -30,10 +30,10 @@ func (x *SimplePerson) New() codecs.Reflected {
 }
 
 func (x *SimplePerson) Type() metadata.Type {
-	return *metadata.CaptureTypeByName("protobench.SimplePerson")
+	return metadata.CaptureTypeByName("protobench.SimplePerson")
 }
 
-func (x *SimplePerson) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *SimplePerson) Encode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -60,7 +60,7 @@ func (x *SimplePerson) Encode(field *metadata.Field, buffer *bytes.Buffer) error
 	}
 }
 
-func (x *SimplePerson) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *SimplePerson) Decode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -101,7 +101,7 @@ func (x *SimplePerson) Decode(field *metadata.Field, buffer *bytes.Buffer) error
 	}
 }
 
-func (x *SimplePerson) IsZero(field *metadata.Field) bool {
+func (x *SimplePerson) IsZero(field metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -146,10 +146,10 @@ func (x *ComplexMessage) New() codecs.Reflected {
 }
 
 func (x *ComplexMessage) Type() metadata.Type {
-	return *metadata.CaptureTypeByName("protobench.ComplexMessage")
+	return metadata.CaptureTypeByName("protobench.ComplexMessage")
 }
 
-func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *ComplexMessage) Encode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -252,7 +252,7 @@ func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) err
 	}
 }
 
-func (x *ComplexMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *ComplexMessage) Decode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -423,7 +423,7 @@ func (x *ComplexMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) err
 	}
 }
 
-func (x *ComplexMessage) IsZero(field *metadata.Field) bool {
+func (x *ComplexMessage) IsZero(field metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -493,10 +493,10 @@ func (x *AddressInfo) New() codecs.Reflected {
 }
 
 func (x *AddressInfo) Type() metadata.Type {
-	return *metadata.CaptureTypeByName("protobench.AddressInfo")
+	return metadata.CaptureTypeByName("protobench.AddressInfo")
 }
 
-func (x *AddressInfo) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *AddressInfo) Encode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -529,7 +529,7 @@ func (x *AddressInfo) Encode(field *metadata.Field, buffer *bytes.Buffer) error 
 	}
 }
 
-func (x *AddressInfo) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *AddressInfo) Decode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -578,7 +578,7 @@ func (x *AddressInfo) Decode(field *metadata.Field, buffer *bytes.Buffer) error 
 	}
 }
 
-func (x *AddressInfo) IsZero(field *metadata.Field) bool {
+func (x *AddressInfo) IsZero(field metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -623,10 +623,10 @@ func (x *ExtraData) New() codecs.Reflected {
 }
 
 func (x *ExtraData) Type() metadata.Type {
-	return *metadata.CaptureTypeByName("protobench.ExtraData")
+	return metadata.CaptureTypeByName("protobench.ExtraData")
 }
 
-func (x *ExtraData) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *ExtraData) Encode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -673,7 +673,7 @@ func (x *ExtraData) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
 	}
 }
 
-func (x *ExtraData) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *ExtraData) Decode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -741,7 +741,7 @@ func (x *ExtraData) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
 	}
 }
 
-func (x *ExtraData) IsZero(field *metadata.Field) bool {
+func (x *ExtraData) IsZero(field metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -787,10 +787,10 @@ func (x *NestedMessage) New() codecs.Reflected {
 }
 
 func (x *NestedMessage) Type() metadata.Type {
-	return *metadata.CaptureTypeByName("protobench.NestedMessage")
+	return metadata.CaptureTypeByName("protobench.NestedMessage")
 }
 
-func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *NestedMessage) Encode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -880,7 +880,7 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 	}
 }
 
-func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) error {
+func (x *NestedMessage) Decode(field metadata.Field, buffer *bytes.Buffer) error {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{
@@ -973,7 +973,7 @@ func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) erro
 	}
 }
 
-func (x *NestedMessage) IsZero(field *metadata.Field) bool {
+func (x *NestedMessage) IsZero(field metadata.Field) bool {
 	switch field.Tags.Protobuf.FieldNum {
 	case 1:
 		{

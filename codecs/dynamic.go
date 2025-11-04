@@ -77,7 +77,7 @@ func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
 	return d._builtEncoders[metadata.TypeName(t)]
 }
 
-func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+func (d *Dynamic) encode(field metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	switch k := field.Kind; {
 	case k == 1:
 		{
@@ -126,9 +126,9 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == pdk.WireTypeVarint || w == pdk.WireTypeI32 || w == pdk.WireTypeI64 {
-				f := *field
+				f := field
 				f.Kind = f.Index
-				fn := d.encode(&f)
+				fn := d.encode(f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := aloc.Alloc(0)
 					defer aloc.Dealloc(innerBuffer)
@@ -142,9 +142,9 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 					return nil
 				}
 			}
-			f := *field
+			f := field
 			f.Kind = f.Index
-			fn := d.encode(&f)
+			fn := d.encode(f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -163,14 +163,14 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 		}
 	case k == 21:
 		{
-			kf := *field
+			kf := field
 			kf.Tags.Protobuf.WireType = kf.Tags.MapKey
 			kf.Kind = kf.Key
-			kv := *field
+			kv := field
 			kv.Tags.Protobuf.WireType = kv.Tags.MapValue
 			kv.Kind = kv.Index
-			kfn := d.encode(&kf)
-			vfn := d.encode(&kv)
+			kfn := d.encode(kf)
+			vfn := d.encode(kv)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -260,7 +260,7 @@ func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, any) error {
 	return d._builtDecoders[metadata.TypeName(t)]
 }
 
-func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+func (d *Dynamic) deode(field metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	switch k := field.Kind; {
 	case k == 1:
 		{
@@ -334,9 +334,9 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				var arrayType reflect.Type
 				var elemType reflect.Type
 				var once sync.Once
-				f := *field
+				f := field
 				f.Kind = f.Index
-				fn := d.deode(&f)
+				fn := d.deode(f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					once.Do(func() {
 						arrayType = v.Type()
@@ -362,9 +362,9 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 			var arrayType reflect.Type
 			var elemType reflect.Type
 			var once sync.Once
-			f := *field
+			f := field
 			f.Kind = f.Index
-			fn := d.deode(&f)
+			fn := d.deode(f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				once.Do(func() {
 					arrayType = v.Type()
@@ -403,12 +403,12 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 			var mapType reflect.Type
 			var mapper reflect.Value
 			var once sync.Once
-			kf := *field
+			kf := field
 			kf.Kind = kf.Key
-			vf := *field
+			vf := field
 			vf.Kind = vf.Index
-			kfn := d.deode(&kf)
-			vfn := d.deode(&vf)
+			kfn := d.deode(kf)
+			vfn := d.deode(vf)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				once.Do(func() {
 					t := v.Type()

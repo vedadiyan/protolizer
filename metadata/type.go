@@ -46,13 +46,13 @@ type (
 	}
 
 	Type struct {
-		Name          string         `protobuf:"bytes,1,opt,name=fields,proto3"`
-		Fields        []*Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
-		FieldsIndexer map[int]*Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+		Name          string        `protobuf:"bytes,1,opt,name=fields,proto3"`
+		Fields        []Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
+		FieldsIndexer map[int]Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 
 	Module struct {
-		Types map[string]*Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+		Types map[string]Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 )
 
@@ -66,11 +66,11 @@ const (
 )
 
 var (
-	_registry map[string]*Type
+	_registry map[string]Type
 )
 
 func init() {
-	_registry = make(map[string]*Type)
+	_registry = make(map[string]Type)
 	RegisterTypeFor[Tags]()
 	RegisterTypeFor[ProtobufInfo]()
 	RegisterTypeFor[Field]()
@@ -88,7 +88,7 @@ func RegisterTypeFor[T any]() {
 	}
 
 	out.Name = TypeName(elemType)
-	out.Fields = make([]*Field, 0)
+	out.Fields = make([]Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
 		if !f.Tags.isProtobuf() {
@@ -100,16 +100,16 @@ func RegisterTypeFor[T any]() {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
 	})
 
-	out.FieldsIndexer = make(map[int]*Field)
+	out.FieldsIndexer = make(map[int]Field)
 	for _, i := range out.Fields {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
 
-	_registry[TypeName(t)] = out
+	_registry[TypeName(t)] = *out
 }
 
 func RegisterTypeAs[T any](name string) {
-	out := new(Type)
+	out := Type{}
 
 	t := reflect.TypeFor[T]()
 	elemType := t
@@ -118,7 +118,7 @@ func RegisterTypeAs[T any](name string) {
 	}
 
 	out.Name = TypeName(elemType)
-	out.Fields = make([]*Field, 0)
+	out.Fields = make([]Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
 		if !f.Tags.isProtobuf() {
@@ -130,7 +130,7 @@ func RegisterTypeAs[T any](name string) {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
 	})
 
-	out.FieldsIndexer = make(map[int]*Field)
+	out.FieldsIndexer = make(map[int]Field)
 	for _, i := range out.Fields {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
@@ -142,20 +142,20 @@ func TypeName(t reflect.Type) string {
 	return t.String()
 }
 
-func CaptureTypeFor[T any]() *Type {
+func CaptureTypeFor[T any]() Type {
 	return _registry[TypeName(reflect.TypeFor[T]())]
 }
 
-func CaptureType(t reflect.Type) *Type {
+func CaptureType(t reflect.Type) Type {
 	return _registry[TypeName(t)]
 }
 
-func CaptureTypeByName(typeName string) *Type {
+func CaptureTypeByName(typeName string) Type {
 	return _registry[typeName]
 }
 
-func newField(f reflect.StructField) *Field {
-	out := new(Field)
+func newField(f reflect.StructField) Field {
+	out := Field{}
 	out.Name = f.Name
 	out.Kind = f.Type.Kind()
 
@@ -313,59 +313,3 @@ func parseProtoTag(tag string) *ProtobufInfo {
 func (t *Tags) isProtobuf() bool {
 	return t.Protobuf != nil
 }
-
-// func ExportType[T any]() ([]byte, error) {
-// 	t := CaptureTypeFor[T]()
-// 	return Marshal(t)
-// }
-
-// func ImportType(bytes []byte) (*Type, error) {
-// 	t := new(Type)
-// 	if err := Unmarshal(bytes, t); err != nil {
-// 		return nil, err
-// 	}
-// 	return t, nil
-// }
-
-// func exportModule(t reflect.Type) (*Module, error) {
-// 	module := new(Module)
-// 	module.Types = make(map[string]*Type)
-// 	module.Types[TypeName(t)] = CaptureType(t)
-// 	for i := range t.NumField() {
-// 		fieldType := t.Field(i).Type
-// 		if fieldType.Kind() == reflect.Array || fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Map {
-// 			fieldType = fieldType.Elem()
-// 		}
-// 		if fieldType.Kind() == reflect.Pointer {
-// 			fieldType = fieldType.Elem()
-// 		}
-// 		if fieldType.Kind() == reflect.Struct {
-// 			modules, err := exportModule(fieldType)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			for key, value := range modules.Types {
-// 				module.Types[key] = value
-// 			}
-// 			continue
-// 		}
-// 	}
-// 	return module, nil
-// }
-
-// func ExportModule[T any]() ([]byte, error) {
-// 	modules, err := exportModule(reflect.TypeFor[T]())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return Marshal(modules)
-// }
-
-// func ImportModule(bytes []byte) (*Module, error) {
-// 	module := new(Module)
-// 	err := Unmarshal(bytes, module)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return module, nil
-// }

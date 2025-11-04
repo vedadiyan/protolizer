@@ -10,11 +10,11 @@ import (
 
 type (
 	Reflected interface {
-		Encode(*metadata.Field, *bytes.Buffer) error
-		Decode(*metadata.Field, *bytes.Buffer) error
+		Encode(metadata.Field, *bytes.Buffer) error
+		Decode(metadata.Field, *bytes.Buffer) error
 		New() Reflected
 		Type() metadata.Type
-		IsZero(*metadata.Field) bool
+		IsZero(metadata.Field) bool
 	}
 	Static struct{}
 )

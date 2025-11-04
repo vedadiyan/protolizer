@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -118,8 +117,8 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	}
 	metadata.RegisterTypeFor[ComplexMessage]()
 	// fn2 := protolizer.StaticCodec().BuildDecoder(reflect.TypeOf(m).Elem())
-	t := metadata.CaptureType(reflect.TypeOf(m).Elem())
-	protolizer.TypelessCodec().Register(t)
+	// t := metadata.CaptureType(reflect.TypeOf(m).Elem())
+	// protolizer.TypelessCodec().Register(t)
 	var out ComplexMessage
 	for i := 0; i < b.N; i++ {
 		err := protolizer.StaticCodec().Unmarshal(data, &out)

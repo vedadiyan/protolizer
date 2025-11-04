@@ -33,19 +33,19 @@ func (tl *Typeless) Marshal(v map[string]any, t *metadata.Type) ([]byte, error) 
 	return nil, fmt.Errorf("type %T has not been registered", v)
 }
 
-func (tl *Typeless) Unmarshal(data []byte, t *metadata.Type) (any, error) {
+func (tl *Typeless) Unmarshal(data []byte, t metadata.Type) (any, error) {
 	if decoder, ok := tl._builtDecoders[t.Name]; ok {
 		return decoder(bytes.NewBuffer(data))
 	}
 	return nil, fmt.Errorf("type %s has not been registered", t.Name)
 }
 
-func (tl *Typeless) Register(t *metadata.Type) {
+func (tl *Typeless) Register(t metadata.Type) {
 	_ = tl.buildEncoder(t)
 	_ = tl.buildDecoder(t)
 }
 
-func (tl *Typeless) buildEncoder(t *metadata.Type) func(map[string]any) ([]byte, error) {
+func (tl *Typeless) buildEncoder(t metadata.Type) func(map[string]any) ([]byte, error) {
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range t.FieldsIndexer {
 		out[index] = tl.encode(field)
@@ -75,7 +75,7 @@ func (tl *Typeless) buildEncoder(t *metadata.Type) func(map[string]any) ([]byte,
 	return tl._builtEncoders[t.Name]
 }
 
-func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
+func (tl *Typeless) encode(field metadata.Field) func(v reflect.Value, buffer *bytes.Buffer) error {
 	switch k := field.Kind; {
 	case k == 1:
 		{
@@ -124,9 +124,9 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == pdk.WireTypeVarint || w == pdk.WireTypeI32 || w == pdk.WireTypeI64 {
-				f := *field
+				f := field
 				f.Kind = f.Index
-				fn := tl.encode(&f)
+				fn := tl.encode(f)
 				return func(v reflect.Value, buffer *bytes.Buffer) error {
 					innerBuffer := aloc.Alloc(0)
 					defer aloc.Dealloc(innerBuffer)
@@ -140,9 +140,9 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 					return nil
 				}
 			}
-			f := *field
+			f := field
 			f.Kind = f.Index
-			fn := tl.encode(&f)
+			fn := tl.encode(f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -161,14 +161,14 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 		}
 	case k == 21:
 		{
-			kf := *field
+			kf := field
 			kf.Tags.Protobuf.WireType = kf.Tags.MapKey
 			kf.Kind = kf.Key
-			kv := *field
+			kv := field
 			kv.Tags.Protobuf.WireType = kv.Tags.MapValue
 			kv.Kind = kv.Index
-			kfn := tl.encode(&kf)
-			vfn := tl.encode(&kv)
+			kfn := tl.encode(kf)
+			vfn := tl.encode(kv)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
 				defer aloc.Dealloc(tag)
@@ -224,7 +224,7 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 	}
 }
 
-func (tl *Typeless) buildDecoder(t *metadata.Type) func(*bytes.Buffer) (any, error) {
+func (tl *Typeless) buildDecoder(t metadata.Type) func(*bytes.Buffer) (any, error) {
 	out := make(map[int]func(*bytes.Buffer) (any, error))
 	for index, field := range t.FieldsIndexer {
 		out[index] = tl.deode(field)
@@ -249,7 +249,7 @@ func (tl *Typeless) buildDecoder(t *metadata.Type) func(*bytes.Buffer) (any, err
 	return tl._builtDecoders[t.Name]
 }
 
-func (tl *Typeless) deode(field *metadata.Field) func(buffer *bytes.Buffer) (any, error) {
+func (tl *Typeless) deode(field metadata.Field) func(buffer *bytes.Buffer) (any, error) {
 	switch k := field.Kind; {
 	case k == 1:
 		{
@@ -292,9 +292,9 @@ func (tl *Typeless) deode(field *metadata.Field) func(buffer *bytes.Buffer) (any
 			}
 			w := field.Tags.Protobuf.WireType
 			if w == pdk.WireTypeVarint || w == pdk.WireTypeI32 || w == pdk.WireTypeI64 {
-				f := *field
+				f := field
 				f.Kind = f.Index
-				fn := tl.deode(&f)
+				fn := tl.deode(f)
 				return func(buffer *bytes.Buffer) (any, error) {
 					out := make([]any, 0)
 					bytes, err := pdk.BytesDecode(buffer)
@@ -314,9 +314,9 @@ func (tl *Typeless) deode(field *metadata.Field) func(buffer *bytes.Buffer) (any
 					return out, nil
 				}
 			}
-			f := *field
+			f := field
 			f.Kind = f.Index
-			fn := tl.deode(&f)
+			fn := tl.deode(f)
 			return func(buffer *bytes.Buffer) (any, error) {
 				out := make([]any, 0)
 				i := 0
@@ -347,12 +347,12 @@ func (tl *Typeless) deode(field *metadata.Field) func(buffer *bytes.Buffer) (any
 		}
 	case k == 21:
 		{
-			kf := *field
+			kf := field
 			kf.Kind = kf.Key
-			vf := *field
+			vf := field
 			vf.Kind = vf.Index
-			kfn := tl.deode(&kf)
-			vfn := tl.deode(&vf)
+			kfn := tl.deode(kf)
+			vfn := tl.deode(vf)
 			return func(buffer *bytes.Buffer) (any, error) {
 				mapper := make(map[any]any)
 				i := 0
