@@ -50,7 +50,7 @@ func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
 	typ := metadata.CaptureType(t)
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range typ.FieldsIndexer {
-		out[index] = d.encode(&field)
+		out[index] = d.encode(field)
 	}
 	d._builtEncoders[metadata.TypeName(t)] = func(in any) ([]byte, error) {
 		buffer := aloc.Alloc(0)
@@ -237,7 +237,7 @@ func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, any) error {
 	typ := metadata.CaptureType(t)
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range typ.FieldsIndexer {
-		out[index] = d.deode(&field)
+		out[index] = d.deode(field)
 	}
 	d._builtDecoders[metadata.TypeName(t)] = func(data *bytes.Buffer, v any) error {
 		rv := reflect.ValueOf(v)

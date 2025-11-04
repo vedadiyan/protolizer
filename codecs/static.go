@@ -25,14 +25,14 @@ func (*Static) Marshal(v Reflected) ([]byte, error) {
 	buffer := aloc.Alloc(0)
 	defer aloc.Dealloc(buffer)
 	for _, field := range typ.Fields {
-		if v.IsZero(&field) {
+		if v.IsZero(field) {
 			continue
 		}
 		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
-		if err := v.Encode(&field, buffer); err != nil {
+		if err := v.Encode(field, buffer); err != nil {
 			return nil, err
 		}
 	}
@@ -45,14 +45,14 @@ func (*Static) InlineMarshal(v Reflected) (*bytes.Buffer, error) {
 
 	buffer := aloc.Alloc(0)
 	for _, field := range typ.Fields {
-		if v.IsZero(&field) {
+		if v.IsZero(field) {
 			continue
 		}
 		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
 		if err != nil {
 			return nil, err
 		}
-		if err := v.Encode(&field, buffer); err != nil {
+		if err := v.Encode(field, buffer); err != nil {
 			return nil, err
 		}
 	}
@@ -73,7 +73,7 @@ func (*Static) Unmarshal(data []byte, v Reflected) error {
 			return err
 		}
 		field := typ.FieldsIndexer[int(fieldNumber)]
-		if err := v.Decode(&field, buffer); err != nil {
+		if err := v.Decode(field, buffer); err != nil {
 			return err
 		}
 	}
@@ -93,7 +93,7 @@ func (*Static) UnmarshalFromBuffer(v Reflected, data *bytes.Buffer) error {
 			return err
 		}
 		field := typ.FieldsIndexer[int(fieldNumber)]
-		if err := v.Decode(&field, data); err != nil {
+		if err := v.Decode(field, data); err != nil {
 			return err
 		}
 	}

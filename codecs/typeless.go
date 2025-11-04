@@ -48,7 +48,7 @@ func (tl *Typeless) Register(t *metadata.Type) {
 func (tl *Typeless) buildEncoder(t *metadata.Type) func(map[string]any) ([]byte, error) {
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range t.FieldsIndexer {
-		out[index] = tl.encode(&field)
+		out[index] = tl.encode(field)
 	}
 	tl._builtEncoders[t.Name] = func(in map[string]any) ([]byte, error) {
 		buffer := aloc.Alloc(0)
@@ -227,7 +227,7 @@ func (tl *Typeless) encode(field *metadata.Field) func(v reflect.Value, buffer *
 func (tl *Typeless) buildDecoder(t *metadata.Type) func(*bytes.Buffer) (any, error) {
 	out := make(map[int]func(*bytes.Buffer) (any, error))
 	for index, field := range t.FieldsIndexer {
-		out[index] = tl.deode(&field)
+		out[index] = tl.deode(field)
 	}
 	tl._builtDecoders[t.Name] = func(data *bytes.Buffer) (any, error) {
 		mapper := make(map[string]any)

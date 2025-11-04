@@ -30,7 +30,7 @@ func (x *SimplePerson) New() codecs.Reflected {
 }
 
 func (x *SimplePerson) Type() metadata.Type {
-	return metadata.CaptureTypeByName("protobench.SimplePerson")
+	return *metadata.CaptureTypeByName("protobench.SimplePerson")
 }
 
 func (x *SimplePerson) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
@@ -146,7 +146,7 @@ func (x *ComplexMessage) New() codecs.Reflected {
 }
 
 func (x *ComplexMessage) Type() metadata.Type {
-	return metadata.CaptureTypeByName("protobench.ComplexMessage")
+	return *metadata.CaptureTypeByName("protobench.ComplexMessage")
 }
 
 func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
@@ -493,7 +493,7 @@ func (x *AddressInfo) New() codecs.Reflected {
 }
 
 func (x *AddressInfo) Type() metadata.Type {
-	return metadata.CaptureTypeByName("protobench.AddressInfo")
+	return *metadata.CaptureTypeByName("protobench.AddressInfo")
 }
 
 func (x *AddressInfo) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
@@ -623,7 +623,7 @@ func (x *ExtraData) New() codecs.Reflected {
 }
 
 func (x *ExtraData) Type() metadata.Type {
-	return metadata.CaptureTypeByName("protobench.ExtraData")
+	return *metadata.CaptureTypeByName("protobench.ExtraData")
 }
 
 func (x *ExtraData) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
@@ -787,7 +787,7 @@ func (x *NestedMessage) New() codecs.Reflected {
 }
 
 func (x *NestedMessage) Type() metadata.Type {
-	return metadata.CaptureTypeByName("protobench.NestedMessage")
+	return *metadata.CaptureTypeByName("protobench.NestedMessage")
 }
 
 func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) error {
