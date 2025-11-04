@@ -1,7 +1,6 @@
 package protolizer
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/vedadiyan/protolizer/metadata"
@@ -23,11 +22,7 @@ func ImportType(bytes []byte) (*metadata.Type, error) {
 func exportModule(t reflect.Type) (*metadata.Module, error) {
 	module := new(metadata.Module)
 	module.Types = make(map[string]metadata.Type)
-	typ := metadata.CaptureType(t)
-	if typ == nil {
-		return nil, fmt.Errorf("type not found")
-	}
-	module.Types[metadata.TypeName(t)] = *typ
+	module.Types[metadata.TypeName(t)] = metadata.CaptureType(t)
 	for i := range t.NumField() {
 		fieldType := t.Field(i).Type
 		if fieldType.Kind() == reflect.Array || fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Map {

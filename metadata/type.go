@@ -66,11 +66,11 @@ const (
 )
 
 var (
-	_registry map[string]*Type
+	_registry map[string]Type
 )
 
 func init() {
-	_registry = make(map[string]*Type)
+	_registry = make(map[string]Type)
 	RegisterTypeFor[Tags]()
 	RegisterTypeFor[ProtobufInfo]()
 	RegisterTypeFor[Field]()
@@ -94,7 +94,7 @@ func RegisterTypeFor[T any]() {
 		if !f.Tags.isProtobuf() {
 			continue
 		}
-		out.Fields = append(out.Fields, *f)
+		out.Fields = append(out.Fields, f)
 	}
 	sort.Slice(out.Fields, func(i, j int) bool {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
@@ -105,11 +105,11 @@ func RegisterTypeFor[T any]() {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
 
-	_registry[TypeName(t)] = out
+	_registry[TypeName(t)] = *out
 }
 
 func RegisterTypeAs[T any](name string) {
-	out := new(Type)
+	out := Type{}
 
 	t := reflect.TypeFor[T]()
 	elemType := t
@@ -124,7 +124,7 @@ func RegisterTypeAs[T any](name string) {
 		if !f.Tags.isProtobuf() {
 			continue
 		}
-		out.Fields = append(out.Fields, *f)
+		out.Fields = append(out.Fields, f)
 	}
 	sort.Slice(out.Fields, func(i, j int) bool {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
@@ -142,20 +142,20 @@ func TypeName(t reflect.Type) string {
 	return t.String()
 }
 
-func CaptureTypeFor[T any]() *Type {
+func CaptureTypeFor[T any]() Type {
 	return _registry[TypeName(reflect.TypeFor[T]())]
 }
 
-func CaptureType(t reflect.Type) *Type {
+func CaptureType(t reflect.Type) Type {
 	return _registry[TypeName(t)]
 }
 
-func CaptureTypeByName(typeName string) *Type {
+func CaptureTypeByName(typeName string) Type {
 	return _registry[typeName]
 }
 
-func newField(f reflect.StructField) *Field {
-	out := new(Field)
+func newField(f reflect.StructField) Field {
+	out := Field{}
 	out.Name = f.Name
 	out.Kind = f.Type.Kind()
 
