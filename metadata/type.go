@@ -46,13 +46,13 @@ type (
 	}
 
 	Type struct {
-		Name          string         `protobuf:"bytes,1,opt,name=fields,proto3"`
-		Fields        []*Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
-		FieldsIndexer map[int]*Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+		Name          string        `protobuf:"bytes,1,opt,name=fields,proto3"`
+		Fields        []Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
+		FieldsIndexer map[int]Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 
 	Module struct {
-		Types map[string]*Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+		Types map[string]Type `protobuf:"bytes,1,rep,name=types,proto3" protobuf_key:"string,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
 )
 
@@ -88,19 +88,19 @@ func RegisterTypeFor[T any]() {
 	}
 
 	out.Name = TypeName(elemType)
-	out.Fields = make([]*Field, 0)
+	out.Fields = make([]Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
 		if !f.Tags.isProtobuf() {
 			continue
 		}
-		out.Fields = append(out.Fields, f)
+		out.Fields = append(out.Fields, *f)
 	}
 	sort.Slice(out.Fields, func(i, j int) bool {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
 	})
 
-	out.FieldsIndexer = make(map[int]*Field)
+	out.FieldsIndexer = make(map[int]Field)
 	for _, i := range out.Fields {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
@@ -118,19 +118,19 @@ func RegisterTypeAs[T any](name string) {
 	}
 
 	out.Name = TypeName(elemType)
-	out.Fields = make([]*Field, 0)
+	out.Fields = make([]Field, 0)
 	for i := range elemType.NumField() {
 		f := newField(elemType.Field(i))
 		if !f.Tags.isProtobuf() {
 			continue
 		}
-		out.Fields = append(out.Fields, f)
+		out.Fields = append(out.Fields, *f)
 	}
 	sort.Slice(out.Fields, func(i, j int) bool {
 		return out.Fields[i].Tags.Protobuf.FieldNum < out.Fields[j].Tags.Protobuf.FieldNum
 	})
 
-	out.FieldsIndexer = make(map[int]*Field)
+	out.FieldsIndexer = make(map[int]Field)
 	for _, i := range out.Fields {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
 	}
