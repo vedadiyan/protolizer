@@ -7,9 +7,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	aloc "github.com/vedadiyan/protolizer/memory"
 	"github.com/vedadiyan/protolizer/pdk"
+	"github.com/vedadiyan/protolizer/util"
 )
 
 type (
@@ -67,6 +69,7 @@ const (
 
 var (
 	_registry map[string]*Type
+	_mut      sync.Mutex
 )
 
 func init() {
@@ -92,12 +95,19 @@ func RegisterType(t reflect.Type) {
 }
 
 func registerType(t reflect.Type, name string) {
-	out := new(Type)
-
-	elemType := t
-	for elemType.Kind() == reflect.Ptr {
-		elemType = elemType.Elem()
+	_mut.Lock()
+	if _, ok := _registry[name]; ok {
+		_mut.Unlock()
+		return
 	}
+	_mut.Unlock()
+
+	elemType := util.GetElemenType(t)
+	if elemType.Kind() != reflect.Struct {
+		return
+	}
+
+	out := new(Type)
 
 	out.Name = name
 	out.Fields = make([]*Field, 0)
@@ -115,6 +125,11 @@ func registerType(t reflect.Type, name string) {
 	out.FieldsIndexer = make(map[int]*Field)
 	for _, i := range out.Fields {
 		out.FieldsIndexer[i.Tags.Protobuf.FieldNum] = i
+	}
+
+	for i := range elemType.NumField() {
+		f := elemType.Field(i)
+		RegisterType(f.Type)
 	}
 
 	_registry[name] = out

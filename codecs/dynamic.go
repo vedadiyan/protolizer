@@ -42,9 +42,19 @@ func (d *Dynamic) Unmarshal(data []byte, v any) error {
 }
 
 func (d *Dynamic) Register(t reflect.Type) {
-	metadata.RegisterType(t)
-	_ = d.buildEncoder(t)
-	_ = d.buildDecoder(t)
+	elemType := util.GetElemenType(t)
+	if elemType.Kind() != reflect.Struct {
+		return
+	}
+	metadata.RegisterType(elemType)
+	_ = d.buildEncoder(elemType)
+	_ = d.buildDecoder(elemType)
+
+	for i := range elemType.NumField() {
+		f := elemType.Field(i)
+		e := util.GetElemenType(f.Type)
+		d.Register(e)
+	}
 }
 
 func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
