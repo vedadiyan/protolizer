@@ -42,6 +42,7 @@ func (d *Dynamic) Unmarshal(data []byte, v any) error {
 }
 
 func (d *Dynamic) Register(t reflect.Type) {
+	metadata.RegisterType(t)
 	_ = d.buildEncoder(t)
 	_ = d.buildDecoder(t)
 }

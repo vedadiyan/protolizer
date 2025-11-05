@@ -12,11 +12,11 @@ import (
 
 func init() {
 	// Register all test types
-	metadata.RegisterTypeFor[SimplePerson]()
-	metadata.RegisterTypeFor[ComplexMessage]()
-	metadata.RegisterTypeFor[NestedMessage]()
-	metadata.RegisterTypeFor[AddressInfo]()
-	metadata.RegisterTypeFor[ExtraData]()
+	// metadata.RegisterTypeFor[SimplePerson]()
+	// metadata.RegisterTypeFor[ComplexMessage]()
+	// metadata.RegisterTypeFor[NestedMessage]()
+	// metadata.RegisterTypeFor[AddressInfo]()
+	// metadata.RegisterTypeFor[ExtraData]()
 }
 
 // ----- Test data generators -----
