@@ -16,14 +16,14 @@ import (
 type (
 	Dynamic struct {
 		_builtEncoders map[string]func(any) ([]byte, error)
-		_builtDecoders map[string]func(*bytes.Buffer, any) error
+		_builtDecoders map[string]func(*bytes.Buffer, reflect.Value) error
 	}
 )
 
 func NewDynamic() *Dynamic {
 	out := new(Dynamic)
 	out._builtEncoders = make(map[string]func(any) ([]byte, error))
-	out._builtDecoders = make(map[string]func(*bytes.Buffer, any) error)
+	out._builtDecoders = make(map[string]func(*bytes.Buffer, reflect.Value) error)
 	return out
 }
 
@@ -35,8 +35,9 @@ func (d *Dynamic) Marshal(v any) ([]byte, error) {
 }
 
 func (d *Dynamic) Unmarshal(data []byte, v any) error {
-	if decoder, ok := d._builtDecoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
-		return decoder(bytes.NewBuffer(data), v)
+	value := reflect.ValueOf(v)
+	if decoder, ok := d._builtDecoders[metadata.TypeName(value.Type())]; ok {
+		return decoder(bytes.NewBuffer(data), value)
 	}
 	return fmt.Errorf("type %T has not been registered", v)
 }
@@ -244,24 +245,24 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 	}
 }
 
-func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, any) error {
+func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, reflect.Value) error {
 	typ := metadata.CaptureType(t)
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range typ.FieldsIndexer {
 		out[index] = d.deode(field)
 	}
-	d._builtDecoders[metadata.TypeName(t)] = func(data *bytes.Buffer, v any) error {
-		rv := reflect.ValueOf(v)
-		if rv.Kind() == reflect.Ptr {
-			rv = rv.Elem()
+	d._builtDecoders[metadata.TypeName(t)] = func(data *bytes.Buffer, v reflect.Value) error {
+		if v.Kind() != reflect.Ptr {
+			return fmt.Errorf("value is not mutable")
 		}
+		v = util.Value(v)
 		for data.Len() != 0 {
 			fieldNumber, _, err := pdk.TagDecode(data)
 			if err != nil {
 				return err
 			}
 			field := typ.FieldsIndexer[int(fieldNumber)]
-			if err := out[int(field.Tags.Protobuf.FieldNum)](rv.FieldByIndex(field.FieldIndex), data); err != nil {
+			if err := out[int(field.Tags.Protobuf.FieldNum)](v.FieldByIndex(field.FieldIndex), data); err != nil {
 				return err
 			}
 
@@ -280,7 +281,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetBool(out)
+				util.Value(v).SetBool(out)
 				return nil
 			}
 		}
@@ -291,7 +292,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetInt(out)
+				util.Value(v).SetInt(out)
 				return nil
 			}
 		}
@@ -302,7 +303,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetUint(out)
+				util.Value(v).SetUint(out)
 				return nil
 			}
 		}
@@ -313,7 +314,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetFloat(float64(out))
+				util.Value(v).SetFloat(float64(out))
 				return nil
 			}
 		}
@@ -324,7 +325,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetFloat(out)
+				util.Value(v).SetFloat(out)
 				return nil
 			}
 		}
@@ -336,7 +337,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 					if err != nil {
 						return err
 					}
-					v.SetBytes(bytes)
+					util.Value(v).SetBytes(bytes)
 					return nil
 				}
 			}
@@ -436,7 +437,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 						i, _, read, err := pdk.TagPeek(buffer)
 						if err != nil {
 							if err == io.EOF {
-								return nil
+								break
 							}
 							return err
 						}
@@ -488,7 +489,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err != nil {
 					return err
 				}
-				v.SetString(out)
+				util.Value(v).SetString(out)
 				return nil
 			}
 		}
@@ -496,11 +497,17 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				value := reflect.New(v.Type())
-				err := d._builtDecoders[metadata.TypeName(v.Type())](buffer, value.Interface())
+				data, err := pdk.BytesDecode(buffer)
 				if err != nil {
 					return err
 				}
-				v.Set(value)
+				buffer = aloc.Alloc(0)
+				buffer.Write(data)
+				defer aloc.Dealloc(buffer)
+				if err := d._builtDecoders[metadata.TypeName(v.Type())](buffer, value); err != nil {
+					return err
+				}
+				v.Set(value.Elem())
 				return nil
 			}
 		}
