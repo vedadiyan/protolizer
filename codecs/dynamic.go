@@ -496,7 +496,7 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 	case k == 25:
 		{
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				value := reflect.New(v.Type())
+				value := util.Value(v).Addr()
 				data, err := pdk.BytesDecode(buffer)
 				if err != nil {
 					return err
@@ -507,7 +507,6 @@ func (d *Dynamic) deode(field *metadata.Field) func(v reflect.Value, buffer *byt
 				if err := d._builtDecoders[metadata.TypeName(v.Type())](buffer, value); err != nil {
 					return err
 				}
-				v.Set(value.Elem())
 				return nil
 			}
 		}
