@@ -97,17 +97,6 @@ func BenchmarkPBUnmarshal_Simple(b *testing.B) {
 
 func BenchmarkPBMarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
-	// protolizer.StaticCodec().RegisterTypeFor[ComplexMessage]()
-	// fn := protolizer.StaticCodec().BuildEncoder(reflect.TypeOf(m).Elem())
-	// fn2 := protolizer.StaticCodec().BuildDecoder(reflect.TypeOf(m).Elem())
-	// _ = fn2
-
-	protolizer.DynamicCodec().Register(reflect.TypeFor[metadata.Type]())
-	out, err := protolizer.DynamicCodec().Marshal(metadata.CaptureTypeFor[ComplexMessage]())
-	_ = err
-	var xxx metadata.Type
-	e := protolizer.DynamicCodec().Unmarshal(out, &xxx)
-	_ = e
 	for i := 0; i < b.N; i++ {
 		_, err := protolizer.StaticCodec().Marshal(m)
 		if err != nil {
