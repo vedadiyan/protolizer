@@ -5,7 +5,7 @@
 //	protolizer    v0.0.1
 //
 // source: test.proto
-package test
+package dynamiccodec
 
 import (
 	"bytes"

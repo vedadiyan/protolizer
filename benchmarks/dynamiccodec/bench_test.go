@@ -1,4 +1,4 @@
-package test
+package dynamiccodec
 
 import (
 	"fmt"
@@ -12,11 +12,11 @@ import (
 
 func init() {
 	// Register all test types
-	metadata.RegisterTypeFor[SimplePerson]()
-	metadata.RegisterTypeFor[ComplexMessage]()
-	metadata.RegisterTypeFor[NestedMessage]()
-	metadata.RegisterTypeFor[AddressInfo]()
-	metadata.RegisterTypeFor[ExtraData]()
+	protolizer.DynamicCodec().Register(reflect.TypeFor[SimplePerson]())
+	protolizer.DynamicCodec().Register(reflect.TypeFor[ComplexMessage]())
+	protolizer.DynamicCodec().Register(reflect.TypeFor[NestedMessage]())
+	protolizer.DynamicCodec().Register(reflect.TypeFor[AddressInfo]())
+	protolizer.DynamicCodec().Register(reflect.TypeFor[ExtraData]())
 }
 
 // ----- Test data generators -----
@@ -75,7 +75,7 @@ func createNestedMessagePB() *NestedMessage {
 func BenchmarkPBMarshal_Simple(b *testing.B) {
 	p := createSimplePersonPB()
 	for i := 0; i < b.N; i++ {
-		if _, err := protolizer.StaticCodec().Marshal(p); err != nil {
+		if _, err := protolizer.DynamicCodec().Marshal(p); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -83,13 +83,13 @@ func BenchmarkPBMarshal_Simple(b *testing.B) {
 
 func BenchmarkPBUnmarshal_Simple(b *testing.B) {
 	p := createSimplePersonPB()
-	data, err := protolizer.StaticCodec().Marshal(p)
+	data, err := protolizer.DynamicCodec().Marshal(p)
 	if err != nil {
 		b.Fatal(err)
 	}
 	var out SimplePerson
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.StaticCodec().Unmarshal(data, &out); err != nil {
+		if err := protolizer.DynamicCodec().Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -98,7 +98,7 @@ func BenchmarkPBUnmarshal_Simple(b *testing.B) {
 func BenchmarkPBMarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
 	for i := 0; i < b.N; i++ {
-		_, err := protolizer.StaticCodec().Marshal(m)
+		_, err := protolizer.DynamicCodec().Marshal(m)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -108,17 +108,17 @@ func BenchmarkPBMarshal_Complex(b *testing.B) {
 
 func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 	m := createComplexMessagePB()
-	data, err := protolizer.StaticCodec().Marshal(m)
+	data, err := protolizer.DynamicCodec().Marshal(m)
 	if err != nil {
 		b.Fatal(err)
 	}
 	metadata.RegisterTypeFor[ComplexMessage]()
-	// fn2 := protolizer.StaticCodec().BuildDecoder(reflect.TypeOf(m).Elem())
+	// fn2 := protolizer.DynamicCodec().BuildDecoder(reflect.TypeOf(m).Elem())
 	t := metadata.CaptureType(reflect.TypeOf(m).Elem())
 	protolizer.TypelessCodec().Register(t)
 	var out ComplexMessage
 	for i := 0; i < b.N; i++ {
-		err := protolizer.StaticCodec().Unmarshal(data, &out)
+		err := protolizer.DynamicCodec().Unmarshal(data, &out)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -129,7 +129,7 @@ func BenchmarkPBUnmarshal_Complex(b *testing.B) {
 func BenchmarkPBMarshal_Nested(b *testing.B) {
 	m := createNestedMessagePB()
 	for i := 0; i < b.N; i++ {
-		if _, err := protolizer.StaticCodec().Marshal(m); err != nil {
+		if _, err := protolizer.DynamicCodec().Marshal(m); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -137,13 +137,13 @@ func BenchmarkPBMarshal_Nested(b *testing.B) {
 
 func BenchmarkPBUnmarshal_Nested(b *testing.B) {
 	m := createNestedMessagePB()
-	data, err := protolizer.StaticCodec().Marshal(m)
+	data, err := protolizer.DynamicCodec().Marshal(m)
 	if err != nil {
 		b.Fatal(err)
 	}
 	var out NestedMessage
 	for i := 0; i < b.N; i++ {
-		if err := protolizer.StaticCodec().Unmarshal(data, &out); err != nil {
+		if err := protolizer.DynamicCodec().Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 		if out.Person.Name != m.Person.Name {
@@ -155,12 +155,12 @@ func BenchmarkPBUnmarshal_Nested(b *testing.B) {
 func BenchmarkPBRoundTrip_Simple(b *testing.B) {
 	p := createSimplePersonPB()
 	for i := 0; i < b.N; i++ {
-		data, err := protolizer.StaticCodec().Marshal(p)
+		data, err := protolizer.DynamicCodec().Marshal(p)
 		if err != nil {
 			b.Fatal(err)
 		}
 		var out SimplePerson
-		if err := protolizer.StaticCodec().Unmarshal(data, &out); err != nil {
+		if err := protolizer.DynamicCodec().Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -169,12 +169,12 @@ func BenchmarkPBRoundTrip_Simple(b *testing.B) {
 func BenchmarkPBRoundTrip_Complex(b *testing.B) {
 	m := createComplexMessagePB()
 	for i := 0; i < b.N; i++ {
-		data, err := protolizer.StaticCodec().Marshal(m)
+		data, err := protolizer.DynamicCodec().Marshal(m)
 		if err != nil {
 			b.Fatal(err)
 		}
 		var out ComplexMessage
-		if err := protolizer.StaticCodec().Unmarshal(data, &out); err != nil {
+		if err := protolizer.DynamicCodec().Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -183,12 +183,12 @@ func BenchmarkPBRoundTrip_Complex(b *testing.B) {
 func BenchmarkPBRoundTrip_Nested(b *testing.B) {
 	m := createNestedMessagePB()
 	for i := 0; i < b.N; i++ {
-		data, err := protolizer.StaticCodec().Marshal(m)
+		data, err := protolizer.DynamicCodec().Marshal(m)
 		if err != nil {
 			b.Fatal(err)
 		}
 		var out NestedMessage
-		if err := protolizer.StaticCodec().Unmarshal(data, &out); err != nil {
+		if err := protolizer.DynamicCodec().Unmarshal(data, &out); err != nil {
 			b.Fatal(err)
 		}
 	}
