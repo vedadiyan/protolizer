@@ -332,6 +332,7 @@ type NestedMessage struct {
 	Address       *AddressInfo           `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	Phones        []string               `protobuf:"bytes,3,rep,name=phones,proto3" json:"phones,omitempty"`
 	Extra         *ExtraData             `protobuf:"bytes,4,opt,name=extra,proto3" json:"extra,omitempty"`
+	PersonArray   []SimplePerson         `protobuf:"bytes,5,rep,name=personArray,proto3" json:"personArray"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

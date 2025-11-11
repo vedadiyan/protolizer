@@ -52,6 +52,9 @@ func createNestedMessagePB() *NestedMessage {
 			Flags:    []bool{true, false, true},
 			Config:   []float64{30.5, 3.0, 100.0},
 		},
+		PersonArray: []SimplePerson{
+			SimplePerson{Name: "Ok", Age: 100, Id: 12345},
+		},
 	}
 }
 
