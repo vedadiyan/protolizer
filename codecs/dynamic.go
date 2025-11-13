@@ -148,9 +148,7 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 						x := v.Index(i)
 						fn(x, innerBuffer)
 					}
-					bytes := pdk.BufferEncode(innerBuffer)
-					bytes.WriteTo(buffer)
-					aloc.Dealloc(bytes)
+					pdk.BufferInlineEncode(innerBuffer, buffer)
 					return nil
 				}
 			}
@@ -158,14 +156,9 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			f.Kind = f.Index
 			fn := d.encode(&f)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-				defer aloc.Dealloc(tag)
-				if err != nil {
-					return err
-				}
 				for i := range v.Len() {
 					if i != 0 {
-						buffer.Write(tag.Bytes())
+						util.IgnoreReturn(buffer.Write(field.Tag))
 					}
 					x := v.Index(i)
 					fn(x, buffer)
@@ -184,18 +177,13 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 			kfn := d.encode(&kf)
 			vfn := d.encode(&kv)
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-				defer aloc.Dealloc(tag)
-				if err != nil {
-					return err
-				}
 				i := 0
 				r := v.MapRange()
 				for r.Next() {
 					key := r.Key()
 					value := r.Value()
 					if i != 0 {
-						util.IgnoreReturn(buffer.Write(tag.Bytes()))
+						util.IgnoreReturn(buffer.Write(field.Tag))
 					}
 					i++
 					innerBuffer := aloc.Alloc(0)
@@ -211,10 +199,8 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 						return err
 					}
 
-					bytes := pdk.BufferEncode(innerBuffer)
-					util.IgnoreReturn(bytes.WriteTo(buffer))
+					pdk.BufferInlineEncode(innerBuffer, buffer)
 					aloc.Dealloc(innerBuffer)
-					aloc.Dealloc(bytes)
 				}
 				return nil
 			}
