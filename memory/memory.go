@@ -1,4 +1,4 @@
-package protolizer
+package memory
 
 import (
 	"bytes"

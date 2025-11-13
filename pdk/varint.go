@@ -1,8 +1,10 @@
-package protolizer
+package pdk
 
 import (
 	"bytes"
 	"fmt"
+
+	aloc "github.com/vedadiyan/protolizer/memory"
 )
 
 func VarintEncode(value int64) *bytes.Buffer {
@@ -10,7 +12,7 @@ func VarintEncode(value int64) *bytes.Buffer {
 }
 
 func UvarintEncode(value uint64) *bytes.Buffer {
-	memory := Alloc(0)
+	memory := aloc.Alloc(0)
 	uvarint(value, memory)
 	return memory
 }
