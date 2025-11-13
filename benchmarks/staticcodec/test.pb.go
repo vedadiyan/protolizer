@@ -184,14 +184,9 @@ func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) err
 	case 6:
 		{
 
-			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-			defer memory.Dealloc(tag)
-			if err != nil {
-				return err
-			}
 			for i, x := range x.Tags {
 				if i != 0 {
-					buffer.Write(tag.Bytes())
+					buffer.Write(field.Tag)
 				}
 				pdk.StringInlineEncode(x, buffer)
 			}
@@ -213,15 +208,10 @@ func (x *ComplexMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) err
 	case 8:
 		{
 
-			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-			defer memory.Dealloc(tag)
-			if err != nil {
-				return err
-			}
 			i := 0
 			for key, value := range x.Metadata {
 				if i != 0 {
-					buffer.Write(tag.Bytes())
+					buffer.Write(field.Tag)
 				}
 				i++
 				innerBuffer := memory.Alloc(0)
@@ -823,14 +813,9 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 	case 3:
 		{
 
-			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-			defer memory.Dealloc(tag)
-			if err != nil {
-				return err
-			}
 			for i, x := range x.Phones {
 				if i != 0 {
-					buffer.Write(tag.Bytes())
+					buffer.Write(field.Tag)
 				}
 				pdk.StringInlineEncode(x, buffer)
 			}
@@ -853,14 +838,9 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 	case 5:
 		{
 
-			tag, err := pdk.TagEncode(int32(field.Tags.Protobuf.FieldNum), pdk.WireTypeLen)
-			defer memory.Dealloc(tag)
-			if err != nil {
-				return err
-			}
 			for i, value := range x.PersonArray {
 				if i != 0 {
-					buffer.Write(tag.Bytes())
+					buffer.Write(field.Tag)
 				}
 				data, err := protolizer.StaticCodec().InlineMarshal(&value)
 				if err != nil {

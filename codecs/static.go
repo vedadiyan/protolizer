@@ -6,6 +6,7 @@ import (
 	aloc "github.com/vedadiyan/protolizer/memory"
 	"github.com/vedadiyan/protolizer/metadata"
 	"github.com/vedadiyan/protolizer/pdk"
+	"github.com/vedadiyan/protolizer/util"
 )
 
 type (
@@ -28,10 +29,7 @@ func (*Static) Marshal(v Reflected) ([]byte, error) {
 		if v.IsZero(field) {
 			continue
 		}
-		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
-		if err != nil {
-			return nil, err
-		}
+		util.IgnoreReturn(buffer.Write(field.Tag))
 		if err := v.Encode(field, buffer); err != nil {
 			return nil, err
 		}
@@ -48,10 +46,7 @@ func (*Static) InlineMarshal(v Reflected) (*bytes.Buffer, error) {
 		if v.IsZero(field) {
 			continue
 		}
-		err := pdk.TagInlineEncode(int32(field.Tags.Protobuf.FieldNum), field.Tags.Protobuf.WireType, buffer)
-		if err != nil {
-			return nil, err
-		}
+		util.IgnoreReturn(buffer.Write(field.Tag))
 		if err := v.Encode(field, buffer); err != nil {
 			return nil, err
 		}
