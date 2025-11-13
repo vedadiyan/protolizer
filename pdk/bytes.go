@@ -21,6 +21,11 @@ func BufferEncode(value *bytes.Buffer) *bytes.Buffer {
 	return memory
 }
 
+func BufferInlineEncode(value *bytes.Buffer, dest *bytes.Buffer) {
+	uvarint(uint64(value.Len()), dest)
+	value.WriteTo(dest)
+}
+
 func StringEncode(value string) *bytes.Buffer {
 	return BytesEncode([]byte(value))
 }

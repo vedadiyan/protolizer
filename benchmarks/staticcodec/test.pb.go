@@ -791,9 +791,7 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 				return err
 			}
 
-			bytes := pdk.BufferEncode(data)
-			defer memory.Dealloc(bytes)
-			bytes.WriteTo(buffer)
+			pdk.BufferInlineEncode(data, buffer)
 			return nil
 		}
 	case 2:
@@ -805,9 +803,7 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 				return err
 			}
 
-			bytes := pdk.BufferEncode(data)
-			defer memory.Dealloc(bytes)
-			bytes.WriteTo(buffer)
+			pdk.BufferInlineEncode(data, buffer)
 			return nil
 		}
 	case 3:
@@ -830,9 +826,7 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 				return err
 			}
 
-			bytes := pdk.BufferEncode(data)
-			defer memory.Dealloc(bytes)
-			bytes.WriteTo(buffer)
+			pdk.BufferInlineEncode(data, buffer)
 			return nil
 		}
 	case 5:
@@ -846,10 +840,8 @@ func (x *NestedMessage) Encode(field *metadata.Field, buffer *bytes.Buffer) erro
 				if err != nil {
 					return err
 				}
-				bytes := pdk.BufferEncode(data)
-				bytes.WriteTo(buffer)
+				pdk.BufferInlineEncode(data, buffer)
 				memory.Dealloc(data)
-				memory.Dealloc(bytes)
 			}
 			return nil
 		}
