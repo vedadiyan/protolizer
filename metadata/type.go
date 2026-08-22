@@ -32,19 +32,20 @@ type (
 	}
 
 	Field struct {
-		Name       string       `protobuf:"bytes,1,opt,name=name,proto3"`
-		Kind       reflect.Kind `protobuf:"varint,2,opt,name=kind,proto3,enum"`
-		Key        reflect.Kind `protobuf:"varint,3,opt,name=key,proto3,enum"`
-		Index      reflect.Kind `protobuf:"varint,4,opt,name=index,proto3"`
-		KeyType    string       `protobuf:"bytes,5,opt,name=key_type,proto3,enum"`
-		IndexType  string       `protobuf:"bytes,6,opt,name=index_type,proto3,enum"`
-		FieldIndex []int        `protobuf:"varint,7,rep,packed,name=field_index,proto3"`
-		IsPointer  bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
-		TypeName   string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
-		Tags       *Tags        `protobuf:"bytes,10,opt,name=tags,proto3"`
-		Tag        []byte       `protobuf:"bytes,11,opt,name=tag,proto3"`
-		KeyTag     []byte       `protobuf:"bytes,12,opt,name=tag,proto3"`
-		ValueTag   []byte       `protobuf:"bytes,13,opt,name=tag,proto3"`
+		Name             string       `protobuf:"bytes,1,opt,name=name,proto3"`
+		Kind             reflect.Kind `protobuf:"varint,2,opt,name=kind,proto3,enum"`
+		Key              reflect.Kind `protobuf:"varint,3,opt,name=key,proto3,enum"`
+		Index            reflect.Kind `protobuf:"varint,4,opt,name=index,proto3"`
+		KeyType          string       `protobuf:"bytes,5,opt,name=key_type,proto3,enum"`
+		IndexType        string       `protobuf:"bytes,6,opt,name=index_type,proto3,enum"`
+		FieldIndex       []int        `protobuf:"varint,7,rep,packed,name=field_index,proto3"`
+		IsPointer        bool         `protobuf:"varint,8,opt,name=is_pointer,proto3"`
+		TypeName         string       `protobuf:"bytes,9,opt,name=type_name,proto3"`
+		ConcreteTypeName string       `protobuf:"bytes,10,opt,name=type_name,proto3"`
+		Tags             *Tags        `protobuf:"bytes,11,opt,name=tags,proto3"`
+		Tag              []byte       `protobuf:"bytes,12,opt,name=tag,proto3"`
+		KeyTag           []byte       `protobuf:"bytes,13,opt,name=tag,proto3"`
+		ValueTag         []byte       `protobuf:"bytes,14,opt,name=tag,proto3"`
 	}
 
 	Type struct {
@@ -142,6 +143,13 @@ func TypeName(t reflect.Type) string {
 	return t.String()
 }
 
+func ConcreteTypeName(t reflect.Type) string {
+	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Array || t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	return t.String()
+}
+
 func CaptureTypeFor[T any]() *Type {
 	return _registry[TypeName(reflect.TypeFor[T]())]
 }
@@ -189,8 +197,10 @@ func newField(f reflect.StructField) *Field {
 	}
 	if out.IsPointer {
 		out.TypeName = TypeName(f.Type.Elem())
+		out.ConcreteTypeName = ConcreteTypeName(f.Type.Elem())
 	} else {
 		out.TypeName = TypeName(f.Type)
+		out.ConcreteTypeName = ConcreteTypeName(f.Type)
 	}
 
 	if out.Tags.Protobuf == nil {

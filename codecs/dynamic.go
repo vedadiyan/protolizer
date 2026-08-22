@@ -214,14 +214,15 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 		}
 	case k == 25:
 		{
+			enc := sync.OnceValue(func() func(reflect.Value) ([]byte, error) {
+				return d._builtEncoders[field.ConcreteTypeName]
+			})
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := d._builtEncoders[metadata.TypeName(v.Type())](v)
+				out, err := enc()(v)
 				if err != nil {
 					return err
 				}
-				bytes := pdk.BytesEncode(out)
-				defer aloc.Dealloc(bytes)
-				util.IgnoreReturn(bytes.WriteTo(buffer))
+				pdk.BytesInlineEncode(out, buffer)
 				return nil
 			}
 		}
@@ -485,6 +486,9 @@ func (d *Dynamic) decode(field *metadata.Field) func(v reflect.Value, buffer *by
 		}
 	case k == 25:
 		{
+			dec := sync.OnceValue(func() func(*bytes.Buffer, reflect.Value) error {
+				return d._builtDecoders[field.ConcreteTypeName]
+			})
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				value := util.Value(v).Addr()
 				data, err := pdk.BytesDecode(buffer)
@@ -494,7 +498,7 @@ func (d *Dynamic) decode(field *metadata.Field) func(v reflect.Value, buffer *by
 				innerBuffer := aloc.Alloc(0)
 				innerBuffer.Write(data)
 				defer aloc.Dealloc(innerBuffer)
-				if err := d._builtDecoders[metadata.TypeName(v.Type())](innerBuffer, value); err != nil {
+				if err := dec()(innerBuffer, value); err != nil {
 					return err
 				}
 				return nil
