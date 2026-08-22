@@ -51,7 +51,7 @@ func TagPeek(data *bytes.Buffer) (int32, WireType, func(), error) {
 	if data.Len() == 0 {
 		return 0, 0, nil, io.EOF
 	}
-	tag, err := UvarintPeek(data)
+	l, tag, err := UvarintPeek(data)
 	if err != nil {
 		return 0, 0, nil, err
 	}
@@ -63,5 +63,5 @@ func TagPeek(data *bytes.Buffer) (int32, WireType, func(), error) {
 		return 0, 0, nil, fmt.Errorf("invalid field number")
 	}
 
-	return fieldNumber, wireType, func() { TagDecode(data) }, nil
+	return fieldNumber, wireType, func() { data.Next(l) }, nil
 }

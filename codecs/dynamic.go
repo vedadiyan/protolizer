@@ -15,21 +15,21 @@ import (
 
 type (
 	Dynamic struct {
-		_builtEncoders map[string]func(any) ([]byte, error)
+		_builtEncoders map[string]func(reflect.Value) ([]byte, error)
 		_builtDecoders map[string]func(*bytes.Buffer, reflect.Value) error
 	}
 )
 
 func NewDynamic() *Dynamic {
 	out := new(Dynamic)
-	out._builtEncoders = make(map[string]func(any) ([]byte, error))
+	out._builtEncoders = make(map[string]func(reflect.Value) ([]byte, error))
 	out._builtDecoders = make(map[string]func(*bytes.Buffer, reflect.Value) error)
 	return out
 }
 
 func (d *Dynamic) Marshal(v any) ([]byte, error) {
 	if encoder, ok := d._builtEncoders[metadata.TypeName(reflect.TypeOf(v))]; ok {
-		return encoder(v)
+		return encoder(reflect.ValueOf(v))
 	}
 	return nil, fmt.Errorf("type %T has not been registered", v)
 }
@@ -58,17 +58,17 @@ func (d *Dynamic) Register(t reflect.Type) {
 	}
 }
 
-func (d *Dynamic) buildEncoder(t reflect.Type) func(any) ([]byte, error) {
+func (d *Dynamic) buildEncoder(t reflect.Type) func(reflect.Value) ([]byte, error) {
 	typ := metadata.CaptureType(t)
 	out := make(map[int]func(reflect.Value, *bytes.Buffer) error)
 	for index, field := range typ.FieldsIndexer {
 		out[index] = d.encode(field)
 	}
-	d._builtEncoders[metadata.TypeName(t)] = func(in any) ([]byte, error) {
+	d._builtEncoders[metadata.TypeName(t)] = func(v reflect.Value) ([]byte, error) {
 		buffer := aloc.Alloc(0)
 		defer aloc.Dealloc(buffer)
-		v := reflect.ValueOf(in)
-		if v.Kind() == reflect.Ptr {
+
+		if v.Kind() == reflect.Pointer {
 			v = v.Elem()
 		}
 		for _, field := range typ.Fields {
@@ -214,14 +214,15 @@ func (d *Dynamic) encode(field *metadata.Field) func(v reflect.Value, buffer *by
 		}
 	case k == 25:
 		{
+			enc := sync.OnceValue(func() func(reflect.Value) ([]byte, error) {
+				return d._builtEncoders[field.ConcreteTypeName]
+			})
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
-				out, err := d._builtEncoders[metadata.TypeName(v.Type())](v.Interface())
+				out, err := enc()(v)
 				if err != nil {
 					return err
 				}
-				bytes := pdk.BytesEncode(out)
-				defer aloc.Dealloc(bytes)
-				util.IgnoreReturn(bytes.WriteTo(buffer))
+				pdk.BytesInlineEncode(out, buffer)
 				return nil
 			}
 		}
@@ -238,7 +239,7 @@ func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, reflect.Value
 		out[index] = d.decode(field)
 	}
 	d._builtDecoders[metadata.TypeName(t)] = func(data *bytes.Buffer, v reflect.Value) error {
-		if v.Kind() != reflect.Ptr {
+		if v.Kind() != reflect.Pointer {
 			return fmt.Errorf("value is not mutable")
 		}
 		v = util.Value(v)
@@ -247,7 +248,10 @@ func (d *Dynamic) buildDecoder(t reflect.Type) func(*bytes.Buffer, reflect.Value
 			if err != nil {
 				return err
 			}
-			field := typ.FieldsIndexer[int(fieldNumber)]
+			field, ok := typ.FieldsIndexer[int(fieldNumber)]
+			if !ok {
+				return fmt.Errorf("invalid field")
+			}
 			if err := out[int(field.Tags.Protobuf.FieldNum)](v.FieldByIndex(field.FieldIndex), data); err != nil {
 				return err
 			}
@@ -348,6 +352,7 @@ func (d *Dynamic) decode(field *metadata.Field) func(v reflect.Value, buffer *by
 					innerBuffer := aloc.Alloc(0)
 					innerBuffer.Write(bytes)
 					defer aloc.Dealloc(innerBuffer)
+
 					for innerBuffer.Len() != 0 {
 						if err := fn(value, innerBuffer); err != nil {
 							return err
@@ -481,16 +486,19 @@ func (d *Dynamic) decode(field *metadata.Field) func(v reflect.Value, buffer *by
 		}
 	case k == 25:
 		{
+			dec := sync.OnceValue(func() func(*bytes.Buffer, reflect.Value) error {
+				return d._builtDecoders[field.ConcreteTypeName]
+			})
 			return func(v reflect.Value, buffer *bytes.Buffer) error {
 				value := util.Value(v).Addr()
 				data, err := pdk.BytesDecode(buffer)
 				if err != nil {
 					return err
 				}
-				buffer = aloc.Alloc(0)
-				buffer.Write(data)
-				defer aloc.Dealloc(buffer)
-				if err := d._builtDecoders[metadata.TypeName(v.Type())](buffer, value); err != nil {
+				innerBuffer := aloc.Alloc(0)
+				innerBuffer.Write(data)
+				defer aloc.Dealloc(innerBuffer)
+				if err := dec()(innerBuffer, value); err != nil {
 					return err
 				}
 				return nil
