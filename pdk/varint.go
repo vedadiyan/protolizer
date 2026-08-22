@@ -52,23 +52,25 @@ func UvarintDecode(data *bytes.Buffer) (uint64, error) {
 	return 0, fmt.Errorf("truncated varint")
 }
 
-func UvarintPeek(data *bytes.Buffer) (uint64, error) {
+func UvarintPeek(data *bytes.Buffer) (int, uint64, error) {
 	var result uint64
 	var shift uint
 	bytes := data.Bytes()
 
-	for i := 0; i < len(bytes); i++ {
+	l := 0
+
+	for i := range bytes {
 		b := bytes[i]
 		if shift == 63 && b > 1 {
-			return 0, fmt.Errorf("varint overflows uint64")
+			return 0, 0, fmt.Errorf("varint overflows uint64")
 		}
 		result |= uint64(b&0x7f) << shift
-
+		l++
 		if b&0x80 == 0 {
-			return result, nil
+			return l, result, nil
 		}
 
 		shift += 7
 	}
-	return 0, fmt.Errorf("truncated varint")
+	return 0, 0, fmt.Errorf("truncated varint")
 }

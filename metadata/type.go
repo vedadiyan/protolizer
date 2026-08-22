@@ -136,7 +136,7 @@ func registerType(t reflect.Type, name string) {
 }
 
 func TypeName(t reflect.Type) string {
-	for t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	return t.String()
