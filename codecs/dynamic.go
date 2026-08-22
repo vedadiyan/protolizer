@@ -73,11 +73,11 @@ func (d *Dynamic) buildEncoder(t reflect.Type) func(reflect.Value) ([]byte, erro
 		}
 		for _, field := range typ.Fields {
 			value := v.FieldByIndex(field.FieldIndex)
-			if field.IsPointer {
-				value = value.Elem()
-			}
 			if value.IsZero() {
 				continue
+			}
+			if field.IsPointer {
+				value = value.Elem()
 			}
 			util.IgnoreReturn(buffer.Write(field.Tag))
 			if err := out[field.Tags.Protobuf.FieldNum](value, buffer); err != nil {
