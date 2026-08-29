@@ -44,12 +44,12 @@ type (
 		ConcreteTypeName string       `protobuf:"bytes,10,opt,name=type_name,proto3"`
 		Tags             *Tags        `protobuf:"bytes,11,opt,name=tags,proto3"`
 		Tag              []byte       `protobuf:"bytes,12,opt,name=tag,proto3"`
-		KeyTag           []byte       `protobuf:"bytes,13,opt,name=tag,proto3"`
-		ValueTag         []byte       `protobuf:"bytes,14,opt,name=tag,proto3"`
+		KeyTag           []byte       `protobuf:"bytes,13,opt,name=key_tags,proto3"`
+		ValueTag         []byte       `protobuf:"bytes,14,opt,name=value_tags,proto3"`
 	}
 
 	Type struct {
-		Name          string         `protobuf:"bytes,1,opt,name=fields,proto3"`
+		Name          string         `protobuf:"bytes,1,opt,name=name,proto3"`
 		Fields        []*Field       `protobuf:"bytes,2,rep,name=fields,proto3"`
 		FieldsIndexer map[int]*Field `protobuf:"bytes,3,rep,name=fields_indexer,proto3" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	}
