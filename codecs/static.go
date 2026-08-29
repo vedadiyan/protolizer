@@ -13,7 +13,7 @@ type (
 	Reflected interface {
 		Encode(*metadata.Field, *bytes.Buffer) error
 		Decode(*metadata.Field, *bytes.Buffer) error
-		New() Reflected
+		Init()
 		Type() metadata.Type
 		IsZero(*metadata.Field) bool
 	}
