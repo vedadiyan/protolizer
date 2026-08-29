@@ -13,7 +13,6 @@ import (
 	"io"
 
 	"github.com/vedadiyan/protolizer"
-	"github.com/vedadiyan/protolizer/codecs"
 	"github.com/vedadiyan/protolizer/memory"
 	"github.com/vedadiyan/protolizer/metadata"
 	"github.com/vedadiyan/protolizer/pdk"
@@ -25,8 +24,8 @@ type SimplePerson struct {
 	Id   uint64 `protobuf:"varint,3,opt,name=id,proto3" json:"id"`
 }
 
-func (x *SimplePerson) New() codecs.Reflected {
-	return new(SimplePerson)
+func (x *SimplePerson) Init() {
+
 }
 
 func (x *SimplePerson) Type() metadata.Type {
@@ -141,8 +140,8 @@ type ComplexMessage struct {
 	Timestamp int64             `protobuf:"varint,9,opt,name=timestamp,proto3" json:"timestamp"`
 }
 
-func (x *ComplexMessage) New() codecs.Reflected {
-	return new(ComplexMessage)
+func (x *ComplexMessage) Init() {
+
 }
 
 func (x *ComplexMessage) Type() metadata.Type {
@@ -478,8 +477,8 @@ type AddressInfo struct {
 	Country string `protobuf:"bytes,4,opt,name=country,proto3" json:"country"`
 }
 
-func (x *AddressInfo) New() codecs.Reflected {
-	return new(AddressInfo)
+func (x *AddressInfo) Init() {
+
 }
 
 func (x *AddressInfo) Type() metadata.Type {
@@ -608,8 +607,8 @@ type ExtraData struct {
 	Config   []float64 `protobuf:"fixed64,4,rep,packed,name=config,proto3" json:"config"`
 }
 
-func (x *ExtraData) New() codecs.Reflected {
-	return new(ExtraData)
+func (x *ExtraData) Init() {
+
 }
 
 func (x *ExtraData) Type() metadata.Type {
@@ -772,8 +771,8 @@ type NestedMessage struct {
 	PersonArray []SimplePerson `protobuf:"bytes,5,rep,name=personArray,proto3" json:"personArray"`
 }
 
-func (x *NestedMessage) New() codecs.Reflected {
-	return new(NestedMessage)
+func (x *NestedMessage) Init() {
+
 }
 
 func (x *NestedMessage) Type() metadata.Type {
@@ -857,7 +856,7 @@ func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) erro
 	case 1:
 		{
 
-			value := new(SimplePerson)
+			value := &SimplePerson{}
 			if err := protolizer.StaticCodec().UnmarshalFromBuffer(value, buffer); err != nil {
 				return err
 			}
@@ -867,7 +866,7 @@ func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) erro
 	case 2:
 		{
 
-			value := new(AddressInfo)
+			value := &AddressInfo{}
 			if err := protolizer.StaticCodec().UnmarshalFromBuffer(value, buffer); err != nil {
 				return err
 			}
@@ -904,7 +903,7 @@ func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) erro
 	case 4:
 		{
 
-			value := new(ExtraData)
+			value := &ExtraData{}
 			if err := protolizer.StaticCodec().UnmarshalFromBuffer(value, buffer); err != nil {
 				return err
 			}
@@ -930,7 +929,7 @@ func (x *NestedMessage) Decode(field *metadata.Field, buffer *bytes.Buffer) erro
 					read()
 				}
 				i++
-				value := new(SimplePerson)
+				value := &SimplePerson{}
 				if err := protolizer.StaticCodec().UnmarshalFromBuffer(value, buffer); err != nil {
 					return nil
 				}
